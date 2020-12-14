@@ -29,7 +29,7 @@ namespace xpcf  = org::bcom::xpcf;
 using namespace SolAR;
 using namespace SolAR::api;
 
-int main(){
+int main(int argc, char *argv[]){
 #if NDEBUG
     boost::log::core::get()->set_logging_enabled(false);
 #endif
@@ -37,10 +37,13 @@ int main(){
     LOG_ADD_LOG_TO_CONSOLE();
     try{
         SRef<xpcf::IComponentManager> componentMgr = xpcf::getComponentManagerInstance();
-        xpcf::XPCFErrorCode errorLoad = componentMgr->load("PipelineRelocalization.xml");
+		std::string configxml = std::string("PipelineRelocalization.xml");
+		if (argc == 2)
+			configxml = std::string(argv[1]);
+        xpcf::XPCFErrorCode errorLoad = componentMgr->load(configxml.c_str());
         if (errorLoad != xpcf::_SUCCESS)
         {
-            LOG_ERROR("The file PipelineRelocalization.xml has an error");
+            LOG_ERROR("The file {} has an error", configxml);
 			return 1;
         }
 
@@ -85,6 +88,7 @@ int main(){
                     {
                         //LOG_INFO("pose.matrix():\n {} \n",pose.matrix())
                         overlay3DComponent->draw(pose, camImage);
+						framePoses.push_back(pose);
                     }
 
                     if ((imageViewerResult->display(camImage) == SolAR::FrameworkReturnCode::_STOP) || 
