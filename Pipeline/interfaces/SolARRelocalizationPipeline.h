@@ -49,7 +49,10 @@ namespace SolAR {
 using namespace datastructure;
 using namespace api;
 using namespace api::sink;
+using namespace api::source;
 using namespace api::pipeline;
+using namespace api::storage;
+using namespace api::reloc;
 namespace PIPELINES {
 
 class SOLARRELOCALIZATIONPIPELINE_EXPORT_API SolARRelocalizationPipeline : public org::bcom::xpcf::ConfigurableBase,
@@ -66,7 +69,7 @@ public:
 
 	/// @brief Provide the camera parameters
 	/// @return the camera parameters (its resolution and its focal)
-	CameraParameters getCameraParameters() override;
+	CameraParameters getCameraParameters() const override;
 
 	/// @brief Starts the pipeline and provides a texture buffer which will be updated when required.
 	/// @param[in] textureHandle a pointer to the texture buffer which will be updated at each call of the update method.
