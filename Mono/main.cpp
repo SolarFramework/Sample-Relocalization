@@ -101,10 +101,10 @@ int main(int argc, char *argv[])
 		else {
 			LOG_ERROR("Cannot load map");
 			return 1;
-		}
-		SRef<IPointCloudManager> pointCloudManager; 
-		SRef<IKeyframesManager> keyframesManager;
-		SRef<IKeyframeRetriever> keyframeRetriever;
+		}		
+		SRef<storage::IPointCloudManager> pointCloudManager;
+		SRef<storage::IKeyframesManager> keyframesManager;
+		SRef<reloc::IKeyframeRetriever> keyframeRetriever;
 		mapper->getPointCloudManager(pointCloudManager);
 		mapper->getKeyframesManager(keyframesManager);
 		mapper->getKeyframeRetriever(keyframeRetriever);		

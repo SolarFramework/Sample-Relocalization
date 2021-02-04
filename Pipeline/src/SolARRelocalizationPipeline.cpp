@@ -155,7 +155,7 @@ SinkReturnCode SolARRelocalizationPipeline::update(Transform3Df& pose)
 		return m_sink->tryGet(pose);
 }
 
-CameraParameters SolARRelocalizationPipeline::getCameraParameters()
+CameraParameters SolARRelocalizationPipeline::getCameraParameters() const
 {
 	CameraParameters camParam;
 	if (m_camera)
