@@ -3,7 +3,7 @@ QT       -= core gui
 CONFIG -= qt
 
 ## global defintions : target lib name, version
-TARGET = SolARRelocalizationMulti
+TARGET = SolARSample_Relocalization_Multi
 VERSION=0.9.1
 
 DEFINES += MYVERSION=$${VERSION}
@@ -64,7 +64,7 @@ win32 {
 }
 
 configfile.path = $${TARGETDEPLOYDIR}/
-configfile.files = $$files($${PWD}/conf_RelocalizationMulti.xml)\
+configfile.files = $$files($${PWD}/SolARSample_Relocalization_Multi_conf.xml)\
 					$$files($${PWD}/camera_calibration.yml)
 INSTALLS += configfile
 

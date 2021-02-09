@@ -40,7 +40,7 @@ DEFINES += "_BCOM_SHARED=__declspec(dllexport)"
 
 INCLUDEPATH += interfaces/
 
-include (SolARRelocalizationPipeline.pri)
+include (SolARPipeline_Relocalization.pri)
 
 unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers

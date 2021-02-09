@@ -3,7 +3,7 @@ QT       -= core gui
 CONFIG -= qt
 
 ## global defintions : target lib name, version
-TARGET = TestRelocalizationPipeline
+TARGET = SolARPipelineTest_Relocalization
 VERSION=0.9.1
 
 DEFINES += MYVERSION=$${VERSION}
@@ -61,7 +61,7 @@ DISTFILES += \
     PipelineRelocalization.xml
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/PipelineRelocalization.xml)\
+config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml)\
                     $$files($${PWD}/camera_calibration.yml)
 INSTALLS += config_files
 
