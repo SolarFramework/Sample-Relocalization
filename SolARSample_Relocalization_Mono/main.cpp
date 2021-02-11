@@ -115,6 +115,16 @@ int main(int argc, char *argv[])
 		std::vector<SRef<CloudPoint>> pointCloud;
 		pointCloudManager->getAllPoints(pointCloud);
 
+		// get keyframe poses to display
+		std::vector<SRef<Keyframe>> allKeyframes;
+		std::vector<Transform3Df> allKeyframePoses;
+		if (keyframesManager->getAllKeyframes(allKeyframes) != FrameworkReturnCode::_SUCCESS) {
+			LOG_ERROR("Cannot get all keyframes");
+			return -1;
+		}
+		for (const auto & kf : allKeyframes)
+			allKeyframePoses.push_back(kf->getPose());
+
 		/* Pose estimation function */
 		auto fnPoseEstimation = [&matcher, &matchesFilter, &corr2D3DFinder, &pnpRansac, &minNbInliers](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, Transform3Df& pose, std::vector<Point2Df>& pts2dInliers) {
 			// feature matching to reference keyframe			
@@ -128,6 +138,7 @@ int main(int argc, char *argv[])
 			std::vector<DescriptorMatch> foundMatches;
 			std::vector<DescriptorMatch> remainingMatches;
 			corr2D3DFinder->find(candidateKf, frame, matches, pts3d, pts2d, corres2D3D, foundMatches, remainingMatches);
+			LOG_DEBUG("Nb of 2D-3D correspondences: {}", pts2d.size());
 			if (pts2d.size() < minNbInliers)
 				return false;
 			// pnp ransac
@@ -143,7 +154,7 @@ int main(int argc, char *argv[])
 		};
 
         /* Relocalization for each image */
-		std::vector<Transform3Df> keyframePoses;
+		std::vector<Transform3Df> framePoses;
 		int nbProcessFrame(0);
 		clock_t start = clock();
 		while (true)
@@ -162,13 +173,14 @@ int main(int argc, char *argv[])
 			SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, descriptors, image, Transform3Df::Identity());
 			// Relocalization
 			std::vector <uint32_t> retKeyframesId;
-			if (keyframeRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {
-				LOG_DEBUG("Number of retrieved keyframes: {}", retKeyframesId.size());
+			std::vector<Transform3Df> bestRetKeyframePoses;
+			if (keyframeRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {				
 				std::vector <uint32_t> processKeyframesId;
 				if (retKeyframesId.size() <= NB_PROCESS_KEYFRAMES)
 					processKeyframesId.swap(retKeyframesId);
 				else
 					processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
+				LOG_DEBUG("Number of retrieved keyframes: {}", processKeyframesId.size());
 				Transform3Df bestPose;
 				std::vector<Point2Df> bestPts2dInliers;
 				for (const auto& it : processKeyframesId) {
@@ -177,6 +189,8 @@ int main(int argc, char *argv[])
 					Transform3Df pose;
 					std::vector<Point2Df> pts2dInliers;
 					bool isFoundPose = fnPoseEstimation(frame, retKeyframe, pose, pts2dInliers);
+					if (isFoundPose)
+						bestRetKeyframePoses.push_back(retKeyframe->getPose());
 					if (isFoundPose && (pts2dInliers.size() > bestPts2dInliers.size())) {
 						bestPose = pose;
 						bestPts2dInliers.swap(pts2dInliers);
@@ -186,17 +200,17 @@ int main(int argc, char *argv[])
 				}
 				if (bestPts2dInliers.size() > 0) {
 					frame->setPose(bestPose);
-					keyframePoses.push_back(bestPose);
+					framePoses.push_back(bestPose);
 					overlay2D->drawCircles(bestPts2dInliers, image);
 					overlay3D->draw(bestPose, image);
 				}
 				LOG_DEBUG("Number of best inliers: {}", bestPts2dInliers.size());
-			}			
+			}
 			// display image
 			if (imageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP)
 				break;
 			// display point cloud and poses
-			if (viewer3D->display(pointCloud, frame->getPose(), {}, keyframePoses) == FrameworkReturnCode::_STOP)
+			if (viewer3D->display(pointCloud, frame->getPose(), bestRetKeyframePoses, framePoses, {}, allKeyframePoses) == FrameworkReturnCode::_STOP)
 				break;
 			nbProcessFrame++;
         }
@@ -209,7 +223,7 @@ int main(int argc, char *argv[])
 
 		// display all relocalization camera poses
 		while (true) {						 
-			if (viewer3D->display(pointCloud, Transform3Df::Identity(), keyframePoses) == FrameworkReturnCode::_STOP)
+			if (viewer3D->display(pointCloud, Transform3Df::Identity(), framePoses, {}, {}, allKeyframePoses) == FrameworkReturnCode::_STOP)
 				break;
 		}
     }
