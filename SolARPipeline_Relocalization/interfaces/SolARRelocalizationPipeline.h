@@ -96,8 +96,8 @@ public:
 	void unloadComponent() override final;
 
 private:
-	// Pose estimation function
-	bool fnPoseEstimation(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, Transform3Df& pose, std::vector<Point2Df>& pts2dInliers);
+	// 2D-3D correspondences finder function
+	bool fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D);
 
 	// Camera image capture task
 	void fnCamImageCapture();

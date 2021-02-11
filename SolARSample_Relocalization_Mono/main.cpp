@@ -35,7 +35,6 @@ using namespace SolAR::datastructure;
 using namespace SolAR::api;
 namespace xpcf  = org::bcom::xpcf;
 
-#define NB_REQUIRED_INLIERS 100
 #define NB_PROCESS_KEYFRAMES 5
 
 int main(int argc, char *argv[])
@@ -125,32 +124,22 @@ int main(int argc, char *argv[])
 		for (const auto & kf : allKeyframes)
 			allKeyframePoses.push_back(kf->getPose());
 
-		/* Pose estimation function */
-		auto fnPoseEstimation = [&matcher, &matchesFilter, &corr2D3DFinder, &pnpRansac, &minNbInliers](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, Transform3Df& pose, std::vector<Point2Df>& pts2dInliers) {
+		/* 2D-3D correspondences finder function */
+		auto fnFind2D3DCorrespondences = [&matcher, &matchesFilter, &corr2D3DFinder, &pnpRansac, &minNbInliers](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D) {
 			// feature matching to reference keyframe			
 			std::vector<DescriptorMatch> matches;
 			matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
 			matchesFilter->filter(matches, matches, candidateKf->getKeypoints(), frame->getKeypoints());
+			if (matches.size() < minNbInliers)
+				return false;
 			// find 2D-3D point correspondences
 			std::vector<Point2Df> pts2d;
 			std::vector<Point3Df> pts3d;
-			std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
 			std::vector<DescriptorMatch> foundMatches;
 			std::vector<DescriptorMatch> remainingMatches;
 			corr2D3DFinder->find(candidateKf, frame, matches, pts3d, pts2d, corres2D3D, foundMatches, remainingMatches);
 			LOG_DEBUG("Nb of 2D-3D correspondences: {}", pts2d.size());
-			if (pts2d.size() < minNbInliers)
-				return false;
-			// pnp ransac
-			std::vector<uint32_t> inliers;
-			if (pnpRansac->estimate(pts2d, pts3d, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
-				LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3d.size());
-				for (const auto& it : inliers)
-					pts2dInliers.push_back(std::move(pts2d[it]));
-				return true;
-			}
-			else
-				return false;
+			return true;
 		};
 
         /* Relocalization for each image */
@@ -181,30 +170,41 @@ int main(int argc, char *argv[])
 				else
 					processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
 				LOG_DEBUG("Number of retrieved keyframes: {}", processKeyframesId.size());
-				Transform3Df bestPose;
-				std::vector<Point2Df> bestPts2dInliers;
+				std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
 				for (const auto& it : processKeyframesId) {
 					SRef<Keyframe> retKeyframe;
 					keyframesManager->getKeyframe(it, retKeyframe);
-					Transform3Df pose;
-					std::vector<Point2Df> pts2dInliers;
-					bool isFoundPose = fnPoseEstimation(frame, retKeyframe, pose, pts2dInliers);
-					if (isFoundPose)
+					std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
+					bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
+					if (isFound) {
 						bestRetKeyframePoses.push_back(retKeyframe->getPose());
-					if (isFoundPose && (pts2dInliers.size() > bestPts2dInliers.size())) {
-						bestPose = pose;
-						bestPts2dInliers.swap(pts2dInliers);
+						for (const auto &corr : corres2D3D) {
+							uint32_t idKp = corr.first;
+							if (allCorres2D3D.find(idKp) == allCorres2D3D.end())
+								allCorres2D3D[idKp] = corr.second;
+						}
 					}
-					if (bestPts2dInliers.size() > NB_REQUIRED_INLIERS)
-						break;
 				}
-				if (bestPts2dInliers.size() > 0) {
-					frame->setPose(bestPose);
-					framePoses.push_back(bestPose);
-					overlay2D->drawCircles(bestPts2dInliers, image);
-					overlay3D->draw(bestPose, image);
+				LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
+				std::vector<Point2Df> pts2D;
+				std::vector<Point3Df> pts3D;
+				for (const auto & corr : allCorres2D3D) {
+					pts2D.push_back(Point2Df(keypoints[corr.first].getX(), keypoints[corr.first].getY()));
+					pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
 				}
-				LOG_DEBUG("Number of best inliers: {}", bestPts2dInliers.size());
+				// pnp ransac
+				std::vector<uint32_t> inliers;
+				Transform3Df pose;
+				if (pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+					LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
+					frame->setPose(pose);
+					framePoses.push_back(pose);
+					std::vector<Point2Df> pts2DInliers;
+					for (const auto& it : inliers)
+						pts2DInliers.push_back(pts2D[it]);
+					overlay2D->drawCircles(pts2DInliers, frame->getView());
+					overlay3D->draw(pose, frame->getView());					
+				}
 			}
 			// display image
 			if (imageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP)

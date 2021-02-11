@@ -4,7 +4,6 @@
 #include "boost/log/core/core.hpp"
 #include <cmath>
 #define NB_PROCESS_KEYFRAMES 5
-#define NB_REQUIRED_INLIERS 100
 
 XPCF_DEFINE_FACTORY_CREATE_INSTANCE(SolAR::PIPELINES::SolARRelocalizationPipeline)
 
@@ -205,31 +204,23 @@ void SolARRelocalizationPipeline::fnExtraction()
 	m_dropBufferFrameDescriptors.push(frame);
 }
 
-bool SolARRelocalizationPipeline::fnPoseEstimation(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, Transform3Df& pose, std::vector<Point2Df>& pts2dInliers)
+bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D)
 {
 	// feature matching to reference keyframe			
 	std::vector<DescriptorMatch> matches;
 	m_matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
 	m_matchesFilter->filter(matches, matches, candidateKf->getKeypoints(), frame->getKeypoints());
 	// find 2D-3D point correspondences
+	if (matches.size() < m_minNbInliers)
+		return false;
+	// find 2D-3D point correspondences
 	std::vector<Point2Df> pts2d;
 	std::vector<Point3Df> pts3d;
-	std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
 	std::vector<DescriptorMatch> foundMatches;
 	std::vector<DescriptorMatch> remainingMatches;
 	m_corr2D3DFinder->find(candidateKf, frame, matches, pts3d, pts2d, corres2D3D, foundMatches, remainingMatches);
-	if (pts2d.size() < m_minNbInliers)
-		return false;
-	// pnp ransac
-	std::vector<uint32_t> inliers;
-	if (m_pnpRansac->estimate(pts2d, pts3d, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
-		LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3d.size());
-		for (const auto& it : inliers)
-			pts2dInliers.push_back(std::move(pts2d[it]));
-		return true;
-	}
-	else
-		return false;
+	LOG_DEBUG("Nb of 2D-3D correspondences: {}", pts2d.size());
+	return true;
 }
 
 void SolARRelocalizationPipeline::fnRelocalization()
@@ -248,29 +239,42 @@ void SolARRelocalizationPipeline::fnRelocalization()
 			processKeyframesId.swap(retKeyframesId);
 		else
 			processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
-		Transform3Df bestPose;
-		std::vector<Point2Df> bestPts2dInliers;
+		std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
 		for (const auto& it : processKeyframesId) {
 			SRef<Keyframe> retKeyframe;
 			m_keyframesManager->getKeyframe(it, retKeyframe);
-			Transform3Df pose;
-			std::vector<Point2Df> pts2dInliers;
-			bool isFoundPose = fnPoseEstimation(frame, retKeyframe, pose, pts2dInliers);
-			if (isFoundPose && (pts2dInliers.size() > bestPts2dInliers.size())) {
-				bestPose = pose;
-				bestPts2dInliers.swap(pts2dInliers);
+			std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
+			bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
+			if (isFound) {
+				for (const auto &corr : corres2D3D) {
+					uint32_t idKp = corr.first;
+					if (allCorres2D3D.find(idKp) == allCorres2D3D.end())
+						allCorres2D3D[idKp] = corr.second;
+				}
 			}
-			if (bestPts2dInliers.size() > NB_REQUIRED_INLIERS)
-				break;
 		}
-		if (bestPts2dInliers.size() > 0) {
-			frame->setPose(bestPose);
-			m_2DOverlay->drawCircles(bestPts2dInliers, frame->getView());
+		LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
+		std::vector<Point2Df> pts2D;
+		std::vector<Point3Df> pts3D;
+		const std::vector<Keypoint>& keypoints = frame->getKeypoints();
+		for (const auto & corr : allCorres2D3D) {
+			pts2D.push_back(Point2Df(keypoints[corr.first].getX(), keypoints[corr.first].getY()));
+			pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
+		}
+		// pnp ransac
+		std::vector<uint32_t> inliers;
+		Transform3Df pose;
+		if (m_pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+			LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
+			frame->setPose(pose);
+			std::vector<Point2Df> pts2DInliers;
+			for (const auto& it : inliers)
+				pts2DInliers.push_back(pts2D[it]);
+			m_2DOverlay->drawCircles(pts2DInliers, frame->getView());
 			m_sink->set(frame->getPose(), frame->getView());
 		}
 		else
 			m_sink->set(frame->getView());
-		LOG_DEBUG("Number of best inliers: {}", bestPts2dInliers.size());
 	}
 }
 
