@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
     LOG_ADD_LOG_TO_CONSOLE();
     try{
         SRef<xpcf::IComponentManager> componentMgr = xpcf::getComponentManagerInstance();
-		std::string configxml = std::string("PipelineRelocalization.xml");
+        std::string configxml = std::string("SolARPipelineTest_Relocalization_conf.xml");
 		if (argc == 2)
 			configxml = std::string(argv[1]);
         xpcf::XPCFErrorCode errorLoad = componentMgr->load(configxml.c_str());
