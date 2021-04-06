@@ -6,6 +6,11 @@ build/
 
 *-Release
 
+*-debug.bat
+*-release.bat
+*_debug.bat
+*_release.bat
+
 
 # Prerequisites
 *.d
@@ -69,7 +74,6 @@ x64*
 *vcxproj.*
 x64/
 .vs/
-*.bat
 *remakeninfo.txt
 Debug/
 Release/
@@ -86,13 +90,13 @@ Release/
 */release/
 *.vcxproj
 *.vcxproj.filters
-*.bat
 *-packagedependencies.txt
 data*
 *-packagedependencies-win.txt
 *.pc
 *.sln
 *aps
+run.sh
 bin/conf_LocalMapFusion.xml
 MapFusion/data/mapA/coordinate.bin
 MapFusion/data/mapA/covisibility_graph.bin

@@ -6,7 +6,7 @@ CONFIG -= app_bundle qt
 INSTALLSUBDIR = SolARBuild
 TARGET = SolARRelocalizationPipeline
 FRAMEWORK = $${TARGET}
-VERSION=0.9.0
+VERSION=0.9.1
 
 DEFINES += MYVERSION=$${VERSION}
 DEFINES += TEMPLATE_LIBRARY
@@ -40,7 +40,7 @@ DEFINES += "_BCOM_SHARED=__declspec(dllexport)"
 
 INCLUDEPATH += interfaces/
 
-include (SolARRelocalizationPipeline.pri)
+include (SolARPipeline_Relocalization.pri)
 
 unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers

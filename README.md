@@ -7,9 +7,21 @@ The SolAR **Relocalization samples** show a SolAR pipeline of camera relocalizat
 
 ## How to run
 
-### Bag Of Word Vocabulary
+### Install required data
 
-:warning: Don't forget to download the [fbow vocabularies](https://github.com/SolarFramework/binaries/releases/download/fbow%2F0.0.1%2Fwin/fbow_voc.zip) unzip this archive and put the `akaze.fbow` in your execution folder.
+Before running the samples, you need to download data such as videos and the vocabulary of the bag of word used for image retrieval.
+To install the required data, just launch the following script:
+
+> #### Windows
+>
+	installData.bat
+
+> #### Linux
+>
+	./installData.sh
+
+This script will install the following data into the `./data` folder:
+- The bag of words downloaded from our [GitHub releases] (https://github.com/SolarFramework/binaries/releases/download/fbow%2F0.0.1%2Fwin/fbow_voc.zip) and unzipped in the `./data/fbow_voc` folder.
 
 ### Camera Calibration
 
@@ -30,13 +42,32 @@ You can run the relocalization samples using a webcam, an image sequence or a vi
 From the binary directory, run following command for testing SolAR Relocalization:
 
 * For mono thread test:
-<pre><code>SolARRelocalizationMono.exe</code></pre>
+> #### Windows
+>
+	SolARRelocalizationMono.exe
+
+> #### Linux
+>
+	./run.sh ./SolARRelocalizationMono
 
 * For multithreading test:
-<pre><code>SolARRelocalizationMulti.exe</code></pre>
+> #### Windows
+>
+	SolARRelocalizationMulti.exe
+
+> #### Linux
+>
+	./run.sh ./SolARRelocalizationMulti
 
 * For pipeline plugin test:
-<pre><code>TestRelocalizationPipeline.exe</code></pre>
+> #### Windows
+>
+	TestRelocalizationPipeline.exe
+
+> #### Linux
+>
+	./run.sh ./TestRelocalizationPipeline
+
 
 Press `escape` to quit the application.
 

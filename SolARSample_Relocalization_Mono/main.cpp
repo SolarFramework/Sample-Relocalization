@@ -16,8 +16,6 @@
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
-#include "xpcf/threading/BaseTask.h"
-#include "xpcf/threading/DropBuffer.h"
 #include "core/Log.h"
 #include "api/input/devices/ICamera.h"
 #include "api/display/IImageViewer.h"
@@ -37,7 +35,6 @@ using namespace SolAR::datastructure;
 using namespace SolAR::api;
 namespace xpcf  = org::bcom::xpcf;
 
-#define NB_REQUIRED_INLIERS 100
 #define NB_PROCESS_KEYFRAMES 5
 
 int main(int argc, char *argv[])
@@ -52,7 +49,7 @@ int main(int argc, char *argv[])
         SRef<xpcf::IComponentManager> xpcfComponentManager = xpcf::getComponentManagerInstance();
 
 		/* Load configuration file */
-		std::string configxml = std::string("conf_RelocalizationMulti.xml");
+        std::string configxml = std::string("SolARSample_Relocalization_Mono_conf.xml");
 		if (argc == 2)
 			configxml = std::string(argv[1]);
 
@@ -103,7 +100,7 @@ int main(int argc, char *argv[])
 		else {
 			LOG_ERROR("Cannot load map");
 			return 1;
-		}
+		}		
 		SRef<storage::IPointCloudManager> pointCloudManager;
 		SRef<storage::IKeyframesManager> keyframesManager;
 		SRef<reloc::IKeyframeRetriever> keyframeRetriever;
@@ -117,169 +114,116 @@ int main(int argc, char *argv[])
 		std::vector<SRef<CloudPoint>> pointCloud;
 		pointCloudManager->getAllPoints(pointCloud);
 
-		// buffers
-		xpcf::DropBuffer<SRef<Image>>				m_dropBufferCamImageCapture;
-		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferKeypoints;
-		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferFrameDescriptors;
-		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferDisplay;
+		// get keyframe poses to display
+		std::vector<SRef<Keyframe>> allKeyframes;
+		std::vector<Transform3Df> allKeyframePoses;
+		if (keyframesManager->getAllKeyframes(allKeyframes) != FrameworkReturnCode::_SUCCESS) {
+			LOG_ERROR("Cannot get all keyframes");
+			return -1;
+		}
+		for (const auto & kf : allKeyframes)
+			allKeyframePoses.push_back(kf->getPose());
 
-		// variables
-		bool stop = false;
-		std::vector<Transform3Df> keyframePoses;
-
-		/* Pose estimation function */
-		auto fnPoseEstimation = [&](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, Transform3Df& pose, std::vector<Point2Df>& pts2dInliers) {
+		/* 2D-3D correspondences finder function */
+		auto fnFind2D3DCorrespondences = [&matcher, &matchesFilter, &corr2D3DFinder, &pnpRansac, &minNbInliers](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D) {
 			// feature matching to reference keyframe			
 			std::vector<DescriptorMatch> matches;
 			matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
 			matchesFilter->filter(matches, matches, candidateKf->getKeypoints(), frame->getKeypoints());
+			if (matches.size() < minNbInliers)
+				return false;
 			// find 2D-3D point correspondences
 			std::vector<Point2Df> pts2d;
 			std::vector<Point3Df> pts3d;
-			std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
 			std::vector<DescriptorMatch> foundMatches;
 			std::vector<DescriptorMatch> remainingMatches;
 			corr2D3DFinder->find(candidateKf, frame, matches, pts3d, pts2d, corres2D3D, foundMatches, remainingMatches);
-			if (pts2d.size() < minNbInliers)
-				return false;
-			// pnp ransac
-			std::vector<uint32_t> inliers;
-			if (pnpRansac->estimate(pts2d, pts3d, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
-				LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3d.size());
-				for (const auto& it : inliers)
-					pts2dInliers.push_back(std::move(pts2d[it]));
-				return true;
-			}
-			else
-				return false;
+			LOG_DEBUG("Nb of 2D-3D correspondences: {}", pts2d.size());
+			return true;
 		};
 
-		/* Camera image capture task */
-		auto fnCamImageCapture = [&]()
+        /* Relocalization for each image */
+		std::vector<Transform3Df> framePoses;
+		int nbProcessFrame(0);
+		clock_t start = clock();
+		while (true)
 		{
+			// get image
 			SRef<Image> image;
 			if (camera->getNextImage(image) != FrameworkReturnCode::_SUCCESS) {
 				LOG_ERROR("Error during capture");
-				stop = true;
-				return;
+				break;
 			}
-			m_dropBufferCamImageCapture.push(image);
-		};
-
-		/* Keypoint detection task */
-		auto fnDetection = [&]()
-		{
-			SRef<Image> image;
-			if (!m_dropBufferCamImageCapture.tryPop(image)) {
-				xpcf::DelegateTask::yield();
-				return;
-			}
+			// feature extraction image
 			std::vector<Keypoint> keypoints;
 			keypointsDetector->detect(image, keypoints);
-			m_dropBufferKeypoints.push(xpcf::utils::make_shared<Frame>(keypoints, nullptr, image, Transform3Df::Identity()));
-		};
-
-		/* Feature extraction task */
-		auto fnExtraction = [&]()
-		{
-			SRef<Frame> frame;
-			if (!m_dropBufferKeypoints.tryPop(frame)) {
-				xpcf::DelegateTask::yield();
-				return;
-			}
 			SRef<DescriptorBuffer> descriptors;
-			descriptorExtractor->extract(frame->getView(), frame->getKeypoints(), descriptors);
-			frame->setDescriptors(descriptors);
-			m_dropBufferFrameDescriptors.push(frame);
-		};
-
-        /* Relocalization task */
-		auto fnRelocalization = [&]()
-		{
-			SRef<Frame> frame;
-			if (!m_dropBufferFrameDescriptors.tryPop(frame)) {
-				xpcf::DelegateTask::yield();
-				return;
-			}
-			// keyframes retrieval
+			descriptorExtractor->extract(image, keypoints, descriptors);
+			SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, descriptors, image, Transform3Df::Identity());
+			// Relocalization
 			std::vector <uint32_t> retKeyframesId;
-			if (keyframeRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {
-				LOG_DEBUG("Number of retrieved keyframes: {}", retKeyframesId.size());
+			std::vector<Transform3Df> bestRetKeyframePoses;
+			if (keyframeRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {				
 				std::vector <uint32_t> processKeyframesId;
 				if (retKeyframesId.size() <= NB_PROCESS_KEYFRAMES)
 					processKeyframesId.swap(retKeyframesId);
 				else
 					processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
-				Transform3Df bestPose;
-				std::vector<Point2Df> bestPts2dInliers;
+				LOG_DEBUG("Number of retrieved keyframes: {}", processKeyframesId.size());
+				std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
 				for (const auto& it : processKeyframesId) {
 					SRef<Keyframe> retKeyframe;
 					keyframesManager->getKeyframe(it, retKeyframe);
-					Transform3Df pose;
-					std::vector<Point2Df> pts2dInliers;
-					bool isFoundPose = fnPoseEstimation(frame, retKeyframe, pose, pts2dInliers);
-					if (isFoundPose && (pts2dInliers.size() > bestPts2dInliers.size())) {
-						bestPose = pose;
-						bestPts2dInliers.swap(pts2dInliers);
+					std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
+					bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
+					if (isFound) {
+						bestRetKeyframePoses.push_back(retKeyframe->getPose());
+						for (const auto &corr : corres2D3D) {
+							uint32_t idKp = corr.first;
+							if (allCorres2D3D.find(idKp) == allCorres2D3D.end())
+								allCorres2D3D[idKp] = corr.second;
+						}
 					}
-					if (bestPts2dInliers.size() > NB_REQUIRED_INLIERS)
-						break;
 				}
-				if (bestPts2dInliers.size() > 0) {
-					frame->setPose(bestPose);
-					keyframePoses.push_back(bestPose);
-					overlay2D->drawCircles(bestPts2dInliers, frame->getView());
-					overlay3D->draw(bestPose, frame->getView());
+				LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
+				std::vector<Point2Df> pts2D;
+				std::vector<Point3Df> pts3D;
+				for (const auto & corr : allCorres2D3D) {
+					pts2D.push_back(Point2Df(keypoints[corr.first].getX(), keypoints[corr.first].getY()));
+					pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
 				}
-				LOG_DEBUG("Number of best inliers: {}", bestPts2dInliers.size());
+				// pnp ransac
+				std::vector<uint32_t> inliers;
+				Transform3Df pose;
+				if (pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+					LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
+					frame->setPose(pose);
+					framePoses.push_back(pose);
+					std::vector<Point2Df> pts2DInliers;
+					for (const auto& it : inliers)
+						pts2DInliers.push_back(pts2D[it]);
+					overlay2D->drawCircles(pts2DInliers, frame->getView());
+					overlay3D->draw(pose, frame->getView());					
+				}
 			}
-			m_dropBufferDisplay.push(frame);
-		};
-		
-		// instantiate and start tasks
-		xpcf::DelegateTask taskCamImageCapture(fnCamImageCapture);
-		xpcf::DelegateTask taskDetection(fnDetection);
-		xpcf::DelegateTask taskExtraction(fnExtraction);
-		xpcf::DelegateTask taskRelocalization(fnRelocalization);
-
-		taskCamImageCapture.start();
-		taskDetection.start();
-		taskExtraction.start();
-		taskRelocalization.start();
-
-		// Start tracking
-		clock_t start, end;
-		int nbProcessFrame(0);
-		start = clock();
-		while (!stop)
-		{
-			SRef<Frame> frame;
-			if (!m_dropBufferDisplay.tryPop(frame)) {
-				xpcf::DelegateTask::yield();
-				continue;
-			}
-			if (imageViewer->display(frame->getView()) == SolAR::FrameworkReturnCode::_STOP)
-				stop = true;
-			if (viewer3D->display(pointCloud, frame->getPose(), {}, keyframePoses) == FrameworkReturnCode::_STOP)
-				stop = true;
-			++nbProcessFrame;
-		}
-
-		// Stop tasks
-		taskCamImageCapture.stop();
-		taskDetection.stop();
-		taskExtraction.stop();
-		taskRelocalization.stop();
+			// display image
+			if (imageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP)
+				break;
+			// display point cloud and poses
+			if (viewer3D->display(pointCloud, frame->getPose(), bestRetKeyframePoses, framePoses, {}, allKeyframePoses) == FrameworkReturnCode::_STOP)
+				break;
+			nbProcessFrame++;
+        }
 
 		// display stats on frame rate
-		end = clock();
+		clock_t end = clock();
 		double duration = double(end - start) / CLOCKS_PER_SEC;
 		printf("\n\nElasped time is %.2lf seconds.\n", duration);
 		printf("Number of processed frame per second : %8.2f\n", nbProcessFrame / duration);
 
 		// display all relocalization camera poses
-		while (true) {
-			if (viewer3D->display(pointCloud, Transform3Df::Identity(), keyframePoses) == FrameworkReturnCode::_STOP)
+		while (true) {						 
+			if (viewer3D->display(pointCloud, Transform3Df::Identity(), framePoses, {}, {}, allKeyframePoses) == FrameworkReturnCode::_STOP)
 				break;
 		}
     }

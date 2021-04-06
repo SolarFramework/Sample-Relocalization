@@ -3,8 +3,8 @@ QT       -= core gui
 CONFIG -= qt
 
 ## global defintions : target lib name, version
-TARGET = TestRelocalizationPipeline
-VERSION=0.9.0
+TARGET = SolARPipelineTest_Relocalization
+VERSION=0.9.1
 
 DEFINES += MYVERSION=$${VERSION}
 CONFIG += c++1z
@@ -61,9 +61,22 @@ DISTFILES += \
     PipelineRelocalization.xml
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/PipelineRelocalization.xml)\
+config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml)\
                     $$files($${PWD}/camera_calibration.yml)
 INSTALLS += config_files
+
+linux {
+  run_install.path = $${TARGETDEPLOYDIR}
+  run_install.files = $${PWD}/../../../run.sh
+  CONFIG(release,debug|release) {
+    run_install.extra = cp $$files($${PWD}/../../../runRelease.sh) $${PWD}/../../../run.sh
+  }
+  CONFIG(debug,debug|release) {
+    run_install.extra = cp $$files($${PWD}/../../../runDebug.sh) $${PWD}/../../../run.sh
+  }
+  INSTALLS += run_install
+}
+
 
 OTHER_FILES += \
     packagedependencies.txt \
