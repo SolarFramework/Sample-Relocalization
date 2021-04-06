@@ -91,6 +91,7 @@ data*
 *.pc
 *.sln
 *aps
+run.sh
 bin/conf_LocalMapFusion.xml
 MapFusion/data/mapA/coordinate.bin
 MapFusion/data/mapA/covisibility_graph.bin
