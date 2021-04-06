@@ -44,7 +44,7 @@ SolARRelocalizationPipeline::~SolARRelocalizationPipeline()
 	LOG_DEBUG(" Pipeline destructor")
 }
 
-FrameworkReturnCode SolARRelocalizationPipeline::init(SRef<xpcf::IComponentManager> xpcfComponentManager)
+FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
 	// component creation
 	try {

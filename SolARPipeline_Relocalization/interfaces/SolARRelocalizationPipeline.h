@@ -55,6 +55,31 @@ using namespace api::storage;
 using namespace api::reloc;
 namespace PIPELINES {
 
+/**
+ * @class PipelineFiducialMarker
+ * @brief A pipeline to estimate the pose based on a squared fiducial marker.
+ *
+ * @SolARComponentInjectablesBegin
+ * @SolARComponentInjectable{SolAR::api::input::devices::ICamera}
+ * @SolARComponentInjectable{SolAR::api::storage::IPointCloudManager}
+ * @SolARComponentInjectable{SolAR::api::storage::IKeyframesManager}
+ * @SolARComponentInjectable{SolAR::api::storage::ICovisibilityGraph}
+ * @SolARComponentInjectable{SolAR::api::reloc::IKeyframeRetriever}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::IMapper}
+ * @SolARComponentInjectable{SolAR::api::features::IKeypointDetector}
+ * @SolARComponentInjectable{SolAR::api::features::IDescriptorsExtractor}
+ * @SolARComponentInjectable{SolAR::api::features::IDescriptorMatcher}
+ * @SolARComponentInjectable{SolAR::api::features::IMatchesFilter}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::I2D3DCorrespondencesFinder}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::I3DTransformSACFinderFrom2D3D}
+ * @SolARComponentInjectable{SolAR::api::image::IImageConvertor}
+ * @SolARComponentInjectable{SolAR::api::sink::ISinkPoseImage}
+ * @SolARComponentInjectable{SolAR::api::source::ISourceImage}
+ * @SolARComponentInjectable{SolAR::api::display::I2DOverlay}
+ * @SolARComponentInjectablesEnd
+ *
+ */
+
 class SOLARRELOCALIZATIONPIPELINE_EXPORT_API SolARRelocalizationPipeline : public org::bcom::xpcf::ConfigurableBase,
 	public api::pipeline::IPoseEstimationPipeline
 {
@@ -65,7 +90,7 @@ public:
 	//// @brief Initialization of the pipeline
 	/// Initialize the pipeline by providing a reference to the component manager loaded by the PipelineManager.
 	/// @param[in] componentManager a shared reference to the component manager which has loaded the components and configuration in the pipleine manager
-	FrameworkReturnCode init(SRef<xpcf::IComponentManager> xpcfComponentManager) override;
+    FrameworkReturnCode init() override;
 
 	/// @brief Provide the camera parameters
 	/// @return the camera parameters (its resolution and its focal)
