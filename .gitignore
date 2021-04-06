@@ -6,6 +6,11 @@ build/
 
 *-Release
 
+*-debug.bat
+*-release.bat
+*_debug.bat
+*_release.bat
+
 
 # Prerequisites
 *.d

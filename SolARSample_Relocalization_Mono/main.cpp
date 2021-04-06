@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         SRef<xpcf::IComponentManager> xpcfComponentManager = xpcf::getComponentManagerInstance();
 
 		/* Load configuration file */
-		std::string configxml = std::string("conf_RelocalizationMono.xml");
+        std::string configxml = std::string("SolARSample_Relocalization_Mono_conf.xml");
 		if (argc == 2)
 			configxml = std::string(argv[1]);
 
