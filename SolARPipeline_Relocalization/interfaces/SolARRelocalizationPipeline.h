@@ -28,7 +28,7 @@
 #include "api/features/IDescriptorMatcher.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
-#include "api/solver/map/IMapper.h"
+#include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
 
@@ -117,13 +117,11 @@ private:
 	int m_minNbInliers;
 	CamCalibration                                      m_calibration;
 	CamDistortion                                       m_distortion;
+	SRef<KeyframeCollection>							m_keyframeCollection;
 
 	// storage components
-	SRef<IPointCloudManager>							m_pointCloudManager;
-	SRef<IKeyframesManager>								m_keyframesManager;
-	SRef<ICovisibilityGraph>							m_covisibilityGraph;
 	SRef<reloc::IKeyframeRetriever>						m_kfRetriever;
-	SRef<solver::map::IMapper>							m_mapper;
+	SRef<storage::IMapManager>							m_mapManager;
 	SRef<input::devices::ICamera>						m_camera;
 	SRef<image::IImageConvertor>						m_imageConvertorUnity;
 	SRef<features::IKeypointDetector>					m_keypointsDetector;

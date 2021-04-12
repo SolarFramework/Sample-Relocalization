@@ -16,11 +16,8 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline() :ConfigurableBase(xpc
 {
 	declareInterface<api::pipeline::IPoseEstimationPipeline>(this);
 	declareInjectable<input::devices::ICamera>(m_camera);
-	declareInjectable<IPointCloudManager>(m_pointCloudManager);
-	declareInjectable<IKeyframesManager>(m_keyframesManager);
-	declareInjectable<ICovisibilityGraph>(m_covisibilityGraph);
-	declareInjectable<reloc::IKeyframeRetriever>(m_kfRetriever);
-	declareInjectable<solver::map::IMapper>(m_mapper);
+	declareInjectable<storage::IMapManager>(m_mapManager);
+	declareInjectable<reloc::IKeyframeRetriever>(m_kfRetriever);	
 	declareInjectable<features::IKeypointDetector>(m_keypointsDetector);
 	declareInjectable<features::IDescriptorsExtractor>(m_descriptorExtractor);
 	declareInjectable<api::display::I2DOverlay>(m_2DOverlay);
@@ -34,7 +31,7 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline() :ConfigurableBase(xpc
 
 	m_stopFlag = false;
 	m_startedOK = false;
-
+	m_haveToBeFlip = false;
 	LOG_DEBUG(" Pipeline constructor");
 }
 
@@ -52,7 +49,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::init(SRef<xpcf::IComponentManag
 		m_calibration = m_camera->getIntrinsicsParameters();
 		m_distortion = m_camera->getDistortionParameters();
 		m_pnpRansac->setCameraParameters(m_calibration, m_distortion);
-		m_minNbInliers = m_pnpRansac->bindTo<xpcf::IConfigurable>()->getProperty("minNbInliers")->getIntegerValue();
+		m_minNbInliers = m_pnpRansac->bindTo<xpcf::IConfigurable>()->getProperty("minNbInliers")->getIntegerValue();	
+		m_initOK = true;		
 	}
 	catch (xpcf::Exception e)
 	{
@@ -82,7 +80,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::start(void* imageDataBuffer)
 	}
 
 	// Load map from file
-	if (m_mapper->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+	if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+		SRef<Map> map;
+		m_mapManager->getMap(map);
+		m_keyframeCollection = map->getConstKeyframeCollection();
 		LOG_INFO("Load map done!");
 	}
 	else {
@@ -164,15 +165,14 @@ CameraParameters SolARRelocalizationPipeline::getCameraParameters() const
 	return camParam;
 }
 
-void SolARRelocalizationPipeline::fnCamImageCapture() {
-
+void SolARRelocalizationPipeline::fnCamImageCapture() {	
 	SRef<Image> view;
 	if (m_stopFlag || !m_initOK || !m_startedOK)
 		return;
 	if (m_haveToBeFlip) {
 		m_source->getNextImage(view);
 		m_imageConvertorUnity->convert(view, view, Image::ImageLayout::LAYOUT_RGB);
-	}
+	}	
 	else if (m_camera->getNextImage(view) != FrameworkReturnCode::_SUCCESS) {
 		m_stopFlag = true;
 		return;
@@ -180,7 +180,7 @@ void SolARRelocalizationPipeline::fnCamImageCapture() {
 	m_dropBufferCamImageCapture.push(view);
 };
 
-void SolARRelocalizationPipeline::fnDetection() {
+void SolARRelocalizationPipeline::fnDetection() {	
 	SRef<Image>  image;
 	if (!m_dropBufferCamImageCapture.tryPop(image)) {
 		xpcf::DelegateTask::yield();
@@ -242,7 +242,7 @@ void SolARRelocalizationPipeline::fnRelocalization()
 		std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
 		for (const auto& it : processKeyframesId) {
 			SRef<Keyframe> retKeyframe;
-			m_keyframesManager->getKeyframe(it, retKeyframe);
+			m_keyframeCollection->getKeyframe(it, retKeyframe);
 			std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
 			bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
 			if (isFound) {
