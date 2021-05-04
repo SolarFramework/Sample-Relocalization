@@ -14,4 +14,3 @@ curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_
 curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_linux_0_9_1.zip -L -o map.zip
 unzip -o map.zip -d ./data
 rm map.zip
-

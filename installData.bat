@@ -21,4 +21,3 @@ curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_offi
 echo Unzip Map
 powershell Expand-Archive map.zip -DestinationPath .\data -F
 del map.zip
-
