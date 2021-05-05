@@ -4,7 +4,7 @@ CONFIG -= app_bundle qt
 
 ## global defintions : target lib name, version
 INSTALLSUBDIR = SolARBuild
-TARGET = SolARRelocalizationPipeline
+TARGET = SolARPipelineRelocalization
 FRAMEWORK = $${TARGET}
 VERSION=0.9.3
 
@@ -55,6 +55,11 @@ macx {
     QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -std=c11 -std=c++11 -O3 -fPIC#-x objective-c++
     QMAKE_LFLAGS += -mmacosx-version-min=10.7 -v -lstdc++
     LIBS += -lstdc++ -lc -lpthread
+}
+
+linux {
+        QMAKE_LFLAGS += -ldl
+        LIBS += -L/home/linuxbrew/.linuxbrew/lib # temporary fix caused by grpc with -lre2 ... without -L in grpc.pc
 }
 
 win32 {
