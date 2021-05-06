@@ -153,8 +153,10 @@ private:
     CamCalibration                                          m_calibration;
     CamDistortion                                           m_distortion;
 
+    // Image ref
+    SRef<Image>                                             m_camImage;
+
 	// storage components
-    SRef<IPointCloudManager>                                m_pointCloudManager;
     SRef<IKeyframesManager>                                 m_keyframesManager;
     SRef<ICovisibilityGraph>                                m_covisibilityGraph;
     SRef<reloc::IKeyframeRetriever>                         m_kfRetriever;

@@ -89,6 +89,7 @@ OTHER_FILES += \
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
 
 DISTFILES += \
+    SolARPipeline_Relocalization_conf.xml \
     bcom-SolARRelocalizationPipeline.pc.in
 
 
