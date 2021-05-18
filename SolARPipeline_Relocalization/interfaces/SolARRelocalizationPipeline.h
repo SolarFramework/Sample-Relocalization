@@ -38,7 +38,6 @@
 #include "core/Log.h"
 #include "api/input/devices/ICamera.h"
 #include "api/display/IImageViewer.h"
-#include "api/display/I2DOverlay.h"
 #include "api/features/IKeypointDetector.h"
 #include "api/features/IDescriptorsExtractor.h"
 #include "api/features/IDescriptorMatcher.h"
@@ -47,13 +46,6 @@
 #include "api/solver/map/IMapper.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
-
-#ifdef USE_OPENGL
-#include "api/sink/ISinkPoseTextureBuffer.h"
-#else
-#include "api/sink/ISinkPoseImage.h"
-#endif
-#include "api/source/ISourceImage.h"
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -64,8 +56,6 @@ namespace xpcf = org::bcom::xpcf;
 namespace SolAR {
 using namespace datastructure;
 using namespace api;
-using namespace api::sink;
-using namespace api::source;
 using namespace api::pipeline;
 using namespace api::storage;
 using namespace api::reloc;
@@ -79,8 +69,6 @@ namespace RELOCALIZATION {
  *
  * @SolARComponentInjectablesBegin
  * @SolARComponentInjectable{SolAR::api::input::devices::ICamera}
- * @SolARComponentInjectable{SolAR::api::display::IImageViewer}
- * @SolARComponentInjectable{SolAR::api::display::I2DOverlay}
  * @SolARComponentInjectable{SolAR::api::features::IKeypointDetector}
  * @SolARComponentInjectable{SolAR::api::features::IDescriptorsExtractor}
  * @SolARComponentInjectable{SolAR::api::features::IDescriptorMatcher}
@@ -164,13 +152,10 @@ private:
     SRef<image::IImageConvertor>                            m_imageConvertorUnity;
     SRef<features::IKeypointDetector>                       m_keypointsDetector;
     SRef<features::IDescriptorsExtractor>                   m_descriptorExtractor;
-    SRef<api::display::I2DOverlay>                          m_2DOverlay;
     SRef<features::IDescriptorMatcher>                      m_matcher;
     SRef<solver::pose::I2D3DCorrespondencesFinder>          m_corr2D3DFinder;
     SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>  m_pnpRansac;
     SRef<features::IMatchesFilter>                          m_matchesFilter;
-    SRef<sink::ISinkPoseImage>                              m_sink;
-    SRef<source::ISourceImage>                              m_source;
 };
 
 } // namespace RELOCALIZATION

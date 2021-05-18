@@ -43,13 +43,10 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInjectable<api::solver::map::IMapper>(m_mapper);
         declareInjectable<api::features::IKeypointDetector>(m_keypointsDetector);
         declareInjectable<api::features::IDescriptorsExtractor>(m_descriptorExtractor);
-        declareInjectable<api::display::I2DOverlay>(m_2DOverlay);
         declareInjectable<api::features::IDescriptorMatcher>(m_matcher);
         declareInjectable<api::solver::pose::I2D3DCorrespondencesFinder>(m_corr2D3DFinder);
         declareInjectable<api::solver::pose::I3DTransformSACFinderFrom2D3D>(m_pnpRansac);
         declareInjectable<api::features::IMatchesFilter>(m_matchesFilter);
-        declareInjectable<api::sink::ISinkPoseImage>(m_sink);
-        declareInjectable<api::source::ISourceImage>(m_source);
 
         LOG_DEBUG("All component injections declared");
 
@@ -100,8 +97,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
     unsigned char * r_imageData = new unsigned char[cameraParams.resolution.width * cameraParams.resolution.height * sizeof(unsigned char) * 3];
     m_camImage = xpcf::utils::make_shared<Image>(r_imageData,cameraParams.resolution.width, cameraParams.resolution.height,
                                                            Image::LAYOUT_BGR, Image::INTERLEAVED, Image::TYPE_8U);
-    m_sink->setImageBuffer((unsigned char*)m_camImage->data());
-
     m_initOK = true;
 
     return FrameworkReturnCode::_SUCCESS;
@@ -213,32 +208,20 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             }
             // pnp ransac
             std::vector<uint32_t> inliers;
-            Transform3Df pose;
             if (m_pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
                 std::vector<Point2Df> pts2DInliers;
                 for (const auto& it : inliers)
                     pts2DInliers.push_back(pts2D[it]);
-                m_2DOverlay->drawCircles(pts2DInliers, frame->getView());
-                m_sink->set(frame->getPose(), frame->getView());
+
+                LOG_DEBUG("Got the new pose!");
+                return FrameworkReturnCode::_SUCCESS;
             }
-            else
-                m_sink->set(frame->getView());
-        }
-
-        sink::SinkReturnCode result = m_sink->tryGet(pose);
-
-        if ((result == sink::SinkReturnCode::_NEW_POSE) || (result == sink::SinkReturnCode::_NEW_POSE_AND_IMAGE)) {
-
-            LOG_DEBUG("Got the new pose!");
-
-            return FrameworkReturnCode::_SUCCESS;
-        }
-        else {
-            LOG_DEBUG("Failed to get the new pose");
-
-            return FrameworkReturnCode::_ERROR_;
+            else {
+                LOG_DEBUG("Failed to get the new pose");
+                return FrameworkReturnCode::_ERROR_;
+            }
         }
     }
     else {
