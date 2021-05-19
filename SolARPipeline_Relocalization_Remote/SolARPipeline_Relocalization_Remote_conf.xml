@@ -124,7 +124,7 @@
     <!-- server configuration -->
 <!--
     <configure component="GrpcServerManager">
-        <property name="server_address" access="rw" type="string" value="0.0.0.0:5005"/>
+        <property name="server_address" access="rw" type="string" value="0.0.0.0:50052"/>
         <property name="serverCredentials" access="rw" type="uint" value="0"/>
         <property name="max_receive_message_size" access="rw" type="uint" value="7000000"/>
         <property name="max_send_message_size" access="rw" type="uint" value="2000000"/>
@@ -177,7 +177,8 @@
             <property name="iterationsCount" type="int" value="500"/>
             <property name="reprojError" type="float" value="3.0"/>
             <property name="confidence" type="float" value="0.99"/>
-            <property name="minNbInliers" type="int" value="15"/>
+            <property name="minNbInliers" type="int" value="30"/>
+            <property name="method" type="string" value="EPNP"/>
     </configure>
     <configure component="SolARKeyframeRetrieverFBOW">
             <property name="VOCpath" type="string" value="../../data/fbow_voc/akaze.fbow"/>
