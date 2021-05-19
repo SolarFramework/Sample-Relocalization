@@ -77,7 +77,7 @@ SolARRelocalizationPipeline::~SolARRelocalizationPipeline()
 
 FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
-    LOG_DEBUG("PipelineMappingMultiProcessing init");
+    LOG_DEBUG("SolARRelocalizationPipeline::init");
 
 	return FrameworkReturnCode::_SUCCESS;
 }

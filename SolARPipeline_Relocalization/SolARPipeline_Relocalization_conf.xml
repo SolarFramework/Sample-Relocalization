@@ -144,7 +144,8 @@
                         <property name="iterationsCount" type="int" value="500"/>
                         <property name="reprojError" type="float" value="3.0"/>
                         <property name="confidence" type="float" value="0.99"/>
-                        <property name="minNbInliers" type="int" value="15"/>
+                        <property name="minNbInliers" type="int" value="30"/>
+                        <property name="method" type="string" value="EPNP"/>
                 </configure>
                 <configure component="SolARKeyframeRetrieverFBOW">
                         <property name="VOCpath" type="string" value="../../data/fbow_voc/akaze.fbow"/>
