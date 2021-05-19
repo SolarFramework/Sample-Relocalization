@@ -22,7 +22,6 @@
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
-#include "api/display/I3DOverlay.h"
 #include "api/display/I3DPointsViewer.h"
 #include "api/storage/IPointCloudManager.h"
 
@@ -92,7 +91,6 @@ int main(int argc, char *argv[]){
             auto arDevice = componentMgr->resolve<input::devices::IARDevice>();
             auto imageViewerResult = componentMgr->resolve<display::IImageViewer>();
             auto viewer3D = componentMgr->resolve<display::I3DPointsViewer>();
-            auto overlay3DComponent = componentMgr->resolve<display::I3DOverlay>();
             auto pointCloudManager = componentMgr->resolve<storage::IPointCloudManager>();
 
             // Connect remotely to the HoloLens streaming app
@@ -103,8 +101,6 @@ int main(int argc, char *argv[]){
                 // Load camera intrinsics parameters
                 CameraParameters camParams;
                 camParams = arDevice->getParameters(0);
-
-                overlay3DComponent->setCameraParameters(camParams.intrinsic, camParams.distortion);
 
                 if (gRelocalizationPipeline->setCameraParameters(camParams) == FrameworkReturnCode::_SUCCESS) {
 
@@ -148,7 +144,6 @@ int main(int argc, char *argv[]){
 
                                     if (gRelocalizationPipeline->relocalizeProcessRequest(image, pose, confidence) == FrameworkReturnCode::_SUCCESS) {
                                         LOG_INFO("New pose calculated by relocalization pipeline");
-                                        overlay3DComponent->draw(pose, image);
                                         framePoses.push_back(pose);
                                     }
                                     else {

@@ -57,10 +57,6 @@
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="b05f3dbb-f93d-465c-aee1-fb58e1480c42" name="IImageViewer" description="IImageViewer"/>
 		</component>
-		<component uuid="2db01f59-9793-4cd5-8e13-b25d0ed5735b" name="SolAR3DOverlayBoxOpencv" description="SolAR3DOverlayBoxOpencv">
-			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
-			<interface uuid="81a20f52-6bf9-4949-b914-df2f614bc945" name="I3DOverlay" description="I3DOverlay"/>
-		</component>
                 <component uuid="4b5576c1-4c44-4835-a405-c8de2d4f85b0" name="SolARDeviceDataLoader" description="SolARDeviceDataLoader">
                         <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
                         <interface uuid="999085e6-1d11-41a5-8cca-3daf4e02e941" name="IARDevice" description="IARDevice"/>
@@ -176,7 +172,8 @@
 			<property name="iterationsCount" type="int" value="500"/>
 			<property name="reprojError" type="float" value="3.0"/>
 			<property name="confidence" type="float" value="0.99"/>
-                        <property name="minNbInliers" type="int" value="15"/>
+                        <property name="minNbInliers" type="int" value="30"/>
+                        <property name="method" type="string" value="EPNP"/>
 		</configure>
 		<configure component="SolARKeyframeRetrieverFBOW">
 			<property name="VOCpath" type="string" value="../../data/fbow_voc/akaze.fbow"/>
@@ -190,23 +187,6 @@
 			<property name="exitKey" type="int" value="27"/>
                         <property name="width" type="int" value="700"/>
                         <property name="height" type="int" value="400"/>
-		</configure>
-		<configure component="SolAR3DOverlayBoxOpencv">
-			<property name="position" type="float">
-				<value>0</value>
-				<value>0</value>
-				<value>0</value>
-			</property>
-			<property name="orientation" type="float">
-				<value>0.0</value>
-				<value>0.0</value>
-				<value>0.0</value>
-			</property>
-			<property name="size" type="float">
-				<value>0.185</value>
-				<value>0.185</value>
-				<value>0.185</value>
-			</property>
 		</configure>
                 <configure component="SolAR3DPointsViewerOpengl">
                         <property name="title" type="string" value="Points Cloud (press esc to exit)"/>
