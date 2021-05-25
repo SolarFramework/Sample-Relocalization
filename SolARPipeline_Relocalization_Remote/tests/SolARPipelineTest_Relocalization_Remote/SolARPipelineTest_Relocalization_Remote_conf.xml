@@ -66,7 +66,7 @@
                 </bindings>
         </factory>
 
-	<properties>
+        <properties>
                 <!-- gRPC proxy configuration-->
                 <configure component="597d510d-452a-4da2-9c3a-8d4b8d15c584">
                         <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50052"/>
@@ -97,11 +97,11 @@
                         <property name="matchingDistanceMax" type="float" value="800"/>
                 </configure>
                 <configure component="SolARImageViewerOpencv">
-			<property name="title" type="string" value="AR device mapping. Green = inliers, Red = outliers"/>
-			<property name="exitKey" type="int" value="27"/>
+                        <property name="title" type="string" value="AR device mapping. Green = inliers, Red = outliers"/>
+                        <property name="exitKey" type="int" value="27"/>
                         <property name="width" type="int" value="700"/>
                         <property name="height" type="int" value="400"/>
-		</configure>
+                </configure>
                 <configure component="SolAR3DPointsViewerOpengl">
                         <property name="title" type="string" value="Points Cloud (press esc to exit)"/>
                         <property name="width" type="uint" value="1280"/>
@@ -142,6 +142,6 @@
                         <property name="zoomSensitivity" type="float" value="10.0"/>
                         <property name="exitKey" type="int" value="27"/>
                 </configure>
-	</properties>
+        </properties>
 
 </xpcf-registry>

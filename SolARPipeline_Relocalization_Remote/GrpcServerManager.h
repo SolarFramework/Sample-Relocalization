@@ -45,7 +45,8 @@ public:
 
 private:
     grpc::ServerBuilder m_builder;
-    std::string m_serverAddress = "0.0.0.0:50052";
+    std::string m_serverAddress = "0.0.0.0";    // Default server address
+    std::string m_serverPort = "50000";         // Default server port
     uint32_t m_serverCredentials = grpcCredentials::InsecureChannelCredentials;
     int64_t m_receiveMessageMaxSize = 7000000;
     int64_t m_sendMessageMaxSize = 3000000;
