@@ -1,8 +1,24 @@
+/**
+ * @copyright Copyright (c) 2021 B-com http://www.b-com.com/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef SOLARRELOCALIZATIONPIPELINE_H
 #define SOLARRELOCALIZATIONPIPELINE_H
 
 #if _WIN32
-#ifdef SolARRelocalizationPipeline_API_DLLEXPORT
+#ifdef SolARPipelineRelocalization_API_DLLEXPORT
 #define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllexport)
 #else //SOLARRELOCALIZATIONPIPELINE_API_DLLEXPORT
 #define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllimport)
@@ -13,7 +29,7 @@
 
 #include "xpcf/core/traits.h"
 #include "xpcf/component/ConfigurableBase.h"
-#include "api/pipeline/IPoseEstimationPipeline.h"
+#include "api/pipeline/IRelocalizationPipeline.h"
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
@@ -22,7 +38,6 @@
 #include "core/Log.h"
 #include "api/input/devices/ICamera.h"
 #include "api/display/IImageViewer.h"
-#include "api/display/I2DOverlay.h"
 #include "api/features/IKeypointDetector.h"
 #include "api/features/IDescriptorsExtractor.h"
 #include "api/features/IDescriptorMatcher.h"
@@ -31,13 +46,6 @@
 #include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
-
-#ifdef USE_OPENGL
-#include "api/sink/ISinkPoseTextureBuffer.h"
-#else
-#include "api/sink/ISinkPoseImage.h"
-#endif
-#include "api/source/ISourceImage.h"
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -48,110 +56,112 @@ namespace xpcf = org::bcom::xpcf;
 namespace SolAR {
 using namespace datastructure;
 using namespace api;
-using namespace api::sink;
-using namespace api::source;
 using namespace api::pipeline;
 using namespace api::storage;
 using namespace api::reloc;
 namespace PIPELINES {
+namespace RELOCALIZATION {
+
+/**
+ * @class SolARRelocalizationPipeline
+ * @brief Implementation of a relocalization vision pipeline
+ * <TT>UUID: 890d718b-3feb-44db-a16f-1330386d5fb2</TT>
+ *
+ * @SolARComponentInjectablesBegin
+ * @SolARComponentInjectable{SolAR::api::input::devices::ICamera}
+ * @SolARComponentInjectable{SolAR::api::features::IKeypointDetector}
+ * @SolARComponentInjectable{SolAR::api::features::IDescriptorsExtractor}
+ * @SolARComponentInjectable{SolAR::api::features::IDescriptorMatcher}
+ * @SolARComponentInjectable{SolAR::api::features::IMatchesFilter}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::I3DTransformSACFinderFrom2D3D}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::IMapper}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::I2D3DCorrespondencesFinder}
+ * @SolARComponentInjectable{SolAR::api::image::IImageConvertor}
+ * @SolARComponentInjectablesEnd
+ *
+ */
 
 class SOLARRELOCALIZATIONPIPELINE_EXPORT_API SolARRelocalizationPipeline : public org::bcom::xpcf::ConfigurableBase,
-	public api::pipeline::IPoseEstimationPipeline
+    public api::pipeline::IRelocalizationPipeline
 {
 public:
 	SolARRelocalizationPipeline();
-	~SolARRelocalizationPipeline();
+    ~SolARRelocalizationPipeline() override;
 
-	//// @brief Initialization of the pipeline
-	/// Initialize the pipeline by providing a reference to the component manager loaded by the PipelineManager.
-	/// @param[in] componentManager a shared reference to the component manager which has loaded the components and configuration in the pipleine manager
-	FrameworkReturnCode init(SRef<xpcf::IComponentManager> xpcfComponentManager) override;
+    /// @brief Method called when all component injections have been done
+    void onInjected() override;
 
-	/// @brief Provide the camera parameters
-	/// @return the camera parameters (its resolution and its focal)
-	CameraParameters getCameraParameters() const override;
+    void unloadComponent() override final {}
 
-	/// @brief Starts the pipeline and provides a texture buffer which will be updated when required.
-	/// @param[in] textureHandle a pointer to the texture buffer which will be updated at each call of the update method.
+    /// @brief Initialization of the pipeline
+    /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode init() override;
 
-	/// @brief Start the pipeline
-	/// @return FrameworkReturnCode::_ERROR_ by default as the pipeline needs to be construct with an imageDataBuffer as parameter
-	FrameworkReturnCode start() override { return FrameworkReturnCode::_ERROR_; }
+    /// @brief Set the camera parameters
+    /// @param[in] cameraParams: the camera parameters (its resolution and its focal)
+    /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams) override;
 
-#ifdef USE_OPENGL
-	FrameworkReturnCode start(void* textureHandle) override;
-#else
-	FrameworkReturnCode start(void* imageDataBuffer) override;
-#endif
+    /// @brief Get the camera parameters
+    /// @param[out] cameraParams: the camera parameters (its resolution and its focal)
+    /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly returned, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getCameraParameters(SolAR::datastructure::CameraParameters & cameraParams) const override;
 
-	/// @brief Stop the pipeline.
-	FrameworkReturnCode stop() override;
+    /// @brief Start the pipeline
+    /// @return FrameworkReturnCode::_SUCCESS if the stard succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode start() override;
 
-	/// @brief update the pipeline
-	/// Get the new pose and update the texture buffer with the image that has to be displayed
-	SinkReturnCode update(Transform3Df& pose) override;
+    /// @brief Stop the pipeline.
+    /// @return FrameworkReturnCode::_SUCCESS if the stop succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode stop() override;
 
-	SourceReturnCode loadSourceImage(void* sourceTextureHandle, int width, int height) override;
-
-	void unloadComponent() override final;
+    /// @brief Request the relocalization pipeline to process a new image to calculate the corresponding pose
+    /// @param[in] image: the image to process
+    /// @param[out] pose: the new calculated pose
+    /// @param[out] confidence: the confidence score
+    /// @return FrameworkReturnCode::_SUCCESS if the processing is successful, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
+                                                 SolAR::datastructure::Transform3Df& pose, float_t & confidence) override;
 
 private:
-	// 2D-3D correspondences finder function
+
+    /// @brief Initialize class members
+    void initClassMembers();
+
+    // 2D-3D correspondences finder function
 	bool fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D);
 
-	// Camera image capture task
-	void fnCamImageCapture();
-
-	// Keypoint detection task
-	void fnDetection();
-
-	// Feature extraction task
-	void fnExtraction();
-
-	// Relocalization task
-	void fnRelocalization();
 private:
 
 	// State flag of the pipeline
-	bool m_stopFlag = false, m_initOK = true, m_startedOK = false, m_haveToBeFlip;
-	int m_minNbInliers;
-	CamCalibration                                      m_calibration;
-	CamDistortion                                       m_distortion;
-	SRef<KeyframeCollection>							m_keyframeCollection;
+    bool m_initOK = false;
+    int m_minNbInliers;
+
+    // Camera parameters
+    CamCalibration                                          m_calibration;
+    CamDistortion                                           m_distortion;
+
+	// keyframe collection
+	SRef<KeyframeCollection>								m_keyframeCollection;
 
 	// storage components
-	SRef<reloc::IKeyframeRetriever>						m_kfRetriever;
-	SRef<storage::IMapManager>							m_mapManager;
-	SRef<input::devices::ICamera>						m_camera;
-	SRef<image::IImageConvertor>						m_imageConvertorUnity;
-	SRef<features::IKeypointDetector>					m_keypointsDetector;
-	SRef<features::IDescriptorsExtractor>				m_descriptorExtractor;
-	SRef<api::display::I2DOverlay>						m_2DOverlay;
-	SRef<features::IDescriptorMatcher>					m_matcher;
-	SRef<solver::pose::I2D3DCorrespondencesFinder>		m_corr2D3DFinder;
-	SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>m_pnpRansac;
-	SRef<features::IMatchesFilter>						m_matchesFilter;
-	SRef<sink::ISinkPoseImage>							m_sink;  
-	SRef<source::ISourceImage>							m_source;	
-
-	// buffers
-	xpcf::DropBuffer<SRef<Image>>						m_dropBufferCamImageCapture;
-	xpcf::DropBuffer<SRef<Frame>>						m_dropBufferKeypoints;
-	xpcf::DropBuffer<SRef<Frame>>						m_dropBufferFrameDescriptors;
-
-	// tasks
-	xpcf::DelegateTask*									m_taskCameraImagesCapture;
-	xpcf::DelegateTask*									m_taskDetection;
-	xpcf::DelegateTask*									m_taskExtraction;
-	xpcf::DelegateTask*									m_taskReloc;
-
+    SRef<reloc::IKeyframeRetriever>                         m_kfRetriever;
+    SRef<storage::IMapManager>								m_mapManager;
+    SRef<features::IKeypointDetector>                       m_keypointsDetector;
+    SRef<features::IDescriptorsExtractor>                   m_descriptorExtractor;
+    SRef<features::IDescriptorMatcher>                      m_matcher;
+    SRef<solver::pose::I2D3DCorrespondencesFinder>          m_corr2D3DFinder;
+    SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>  m_pnpRansac;
+    SRef<features::IMatchesFilter>                          m_matchesFilter;
 };
 
-}//namespace PIPELINES
-}//namespace SolAR
+} // namespace RELOCALIZATION
+} // namespace PIPELINES
+} // namespace SolAR
 
-XPCF_DEFINE_COMPONENT_TRAITS(SolAR::PIPELINES::SolARRelocalizationPipeline,
-	"890d718b-3feb-44db-a16f-1330386d5fb2",
-	"SolARRelocalizationPipeline",
-	"Relocalization pipeline");
+XPCF_DEFINE_COMPONENT_TRAITS(SolAR::PIPELINES::RELOCALIZATION::SolARRelocalizationPipeline,
+                            "890d718b-3feb-44db-a16f-1330386d5fb2",
+                            "SolARRelocalizationPipeline",
+                            "SolARRelocalizationPipeline implements api::pipeline::IRelocalizationPipeline interface");
+
 #endif // SOLARRELOCALIZATIONPIPELINE_H

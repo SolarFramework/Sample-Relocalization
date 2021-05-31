@@ -4,7 +4,7 @@ CONFIG -= app_bundle qt
 
 ## global defintions : target lib name, version
 INSTALLSUBDIR = SolARBuild
-TARGET = SolARRelocalizationPipeline
+TARGET = SolARPipelineRelocalization
 FRAMEWORK = $${TARGET}
 VERSION=0.9.4
 
@@ -57,6 +57,11 @@ macx {
     LIBS += -lstdc++ -lc -lpthread
 }
 
+linux {
+        QMAKE_LFLAGS += -ldl
+        LIBS += -L/home/linuxbrew/.linuxbrew/lib # temporary fix caused by grpc with -lre2 ... without -L in grpc.pc
+}
+
 win32 {
 
     DEFINES += WIN64 UNICODE _UNICODE
@@ -84,6 +89,7 @@ OTHER_FILES += \
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
 
 DISTFILES += \
+    SolARPipeline_Relocalization_conf.xml \
     bcom-SolARRelocalizationPipeline.pc.in
 
 

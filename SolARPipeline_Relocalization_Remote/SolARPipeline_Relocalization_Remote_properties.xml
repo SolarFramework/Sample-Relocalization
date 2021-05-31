@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<xpcf-registry autoAlias="true">
+
+<properties>
+    <!-- server configuration -->
+<!--
+    <configure component="GrpcServerManager">
+        <property name="server_address" access="rw" type="string" value="0.0.0.0"/>
+        <property name="server_port" access="rw" type="string" value="50000"/>
+        <property name="serverCredentials" access="rw" type="uint" value="0"/>
+        <property name="max_receive_message_size" access="rw" type="uint" value="7000000"/>
+        <property name="max_send_message_size" access="rw" type="uint" value="2000000"/>
+    </configure>
+-->
+    <!-- relocalization pipeline configuration -->
+    <configure component="SolARMapper">
+            <property name="directory" type="string" value="../../data/map_hololens/mapA"/>
+            <property name="identificationFileName" type="string" value="identification.bin"/>
+            <property name="coordinateFileName" type="string" value="coordinate.bin"/>
+            <property name="pointCloudManagerFileName" type="string" value="pointcloud.bin"/>
+            <property name="keyframesManagerFileName" type="string" value="keyframes.bin"/>
+            <property name="covisibilityGraphFileName" type="string" value="covisibility_graph.bin"/>
+            <property name="keyframeRetrieverFileName" type="string" value="keyframe_retriever.bin"/>
+            <property name="reprojErrorThreshold" type="float" value="10.0"/>
+            <property name="thresConfidence" type="float" value="0.25"/>
+    </configure>
+    <configure component="SolARKeypointDetectorOpencv">
+            <property name="type" type="string" value="AKAZE2"/>
+            <property name="imageRatio" type="float" value="1.0"/>
+            <property name="nbDescriptors" type="int" value="2000"/>
+            <property name="nbOctaves" type="int" value="4"/>
+            <property name="threshold" type="float" value="0.0001"/>
+            <property name="borderRatio" type="float" value="0.0"/>
+    </configure>
+    <configure component="SolARDescriptorsExtractorAKAZEOpencv">
+            <property name="threshold" type="float" value="3e-4"/>
+    </configure>
+    <configure component="SolARDescriptorsExtractorAKAZE2Opencv">
+            <property name="threshold" type="float" value="3e-4"/>
+    </configure>
+    <configure component="SolARDescriptorsExtractorORBOpencv">
+            <property name="threshold" type="float" value="3e-4"/>
+    </configure>
+    <configure component="SolARDescriptorsExtractorSIFTOpencv">
+            <property name="nbFeatures" type="int" value="2000"/>
+            <property name="nbOctaveLayers" type="int" value="4"/>
+    </configure>
+    <configure component="SolARDescriptorMatcherKNNOpencv">
+            <property name="distanceRatio" type="float" value="0.8"/>
+            <property name="radius" type="float" value="15"/>
+            <property name="matchingDistanceMax" type="float" value="800"/>
+    </configure>
+    <configure component="SolARGeometricMatchesFilterOpencv">
+            <property name="confidence" type="float" value="0.99"/>
+            <property name="outlierDistanceRatio" type="float" value="0.005"/>
+            <property name="epilinesDistance" type="float" value="3.0"/>
+    </configure>
+    <configure component="SolARPoseEstimationSACPnpOpencv">
+            <property name="iterationsCount" type="int" value="500"/>
+            <property name="reprojError" type="float" value="3.0"/>
+            <property name="confidence" type="float" value="0.99"/>
+            <property name="minNbInliers" type="int" value="30"/>
+            <property name="method" type="string" value="EPNP"/>
+    </configure>
+    <configure component="SolARKeyframeRetrieverFBOW">
+            <property name="VOCpath" type="string" value="../../data/fbow_voc/akaze.fbow"/>
+            <property name="threshold" type="float" value="0.01"/>
+            <property name="level" type="int" value="3"/>
+            <property name="matchingDistanceRatio" type="float" value="0.8"/>
+            <property name="matchingDistanceMax" type="float" value="800"/>
+    </configure>
+
+</properties>
+
+</xpcf-registry>
