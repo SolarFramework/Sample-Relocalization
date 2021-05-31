@@ -27,7 +27,7 @@
 #include "api/features/IDescriptorMatcher.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
-#include "api/solver/map/IMapper.h"
+#include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 
 using namespace SolAR;
@@ -66,7 +66,8 @@ int main(int argc, char *argv[])
 		auto overlay3D = xpcfComponentManager->resolve<display::I3DOverlay>();
 		auto overlay2D = xpcfComponentManager->resolve<display::I2DOverlay>();
 		auto viewer3D = xpcfComponentManager->resolve<display::I3DPointsViewer>();
-		auto mapper = xpcfComponentManager->resolve<solver::map::IMapper>();
+		auto mapManager = xpcfComponentManager->resolve<storage::IMapManager>();
+		auto keyframeRetriever = xpcfComponentManager->resolve<reloc::IKeyframeRetriever>();
 		auto keypointsDetector = xpcfComponentManager->resolve<features::IKeypointDetector>();
 		auto descriptorExtractor = xpcfComponentManager->resolve<features::IDescriptorsExtractor>();
 		auto matcher = xpcfComponentManager->resolve<features::IDescriptorMatcher>();
@@ -94,35 +95,35 @@ int main(int argc, char *argv[])
 		int minNbInliers = pnpRansac->bindTo<xpcf::IConfigurable>()->getProperty("minNbInliers")->getIntegerValue();
 
 		/* Load map from file */
-		if (mapper->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+		if (mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
 			LOG_INFO("Load map done!");
 		}
 		else {
 			LOG_ERROR("Cannot load map");
 			return 1;
 		}		
-		SRef<storage::IPointCloudManager> pointCloudManager;
-		SRef<storage::IKeyframesManager> keyframesManager;
-		SRef<reloc::IKeyframeRetriever> keyframeRetriever;
-		mapper->getPointCloudManager(pointCloudManager);
-		mapper->getKeyframesManager(keyframesManager);
-		mapper->getKeyframeRetriever(keyframeRetriever);		
-		LOG_INFO("Number of initial point cloud: {}", pointCloudManager->getNbPoints());
-		LOG_INFO("Number of initial keyframes: {}", keyframesManager->getNbKeyframes());
 
-		// get point cloud to display
+		// get map
+		SRef<Map> map;
+		mapManager->getMap(map);					
+
+		// get point cloud
 		std::vector<SRef<CloudPoint>> pointCloud;
-		pointCloudManager->getAllPoints(pointCloud);
+		map->getConstPointCloud()->getAllPoints(pointCloud);
 
-		// get keyframe poses to display
+		// get keyframe
 		std::vector<SRef<Keyframe>> allKeyframes;
 		std::vector<Transform3Df> allKeyframePoses;
-		if (keyframesManager->getAllKeyframes(allKeyframes) != FrameworkReturnCode::_SUCCESS) {
-			LOG_ERROR("Cannot get all keyframes");
-			return -1;
-		}
+		const SRef<KeyframeCollection>& keyframeCollection = map->getConstKeyframeCollection();
+		keyframeCollection->getAllKeyframes(allKeyframes);
 		for (const auto & kf : allKeyframes)
 			allKeyframePoses.push_back(kf->getPose());
+
+		// get keyframe retrieval
+		keyframeRetriever->setKeyframeRetrieval(map->getConstKeyframeRetrieval());
+
+		LOG_INFO("Number of initial point cloud: {}", pointCloud.size());
+		LOG_INFO("Number of initial keyframes: {}", allKeyframes.size());
 
 		/* 2D-3D correspondences finder function */
 		auto fnFind2D3DCorrespondences = [&matcher, &matchesFilter, &corr2D3DFinder, &pnpRansac, &minNbInliers](const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D) {
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
 				std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
 				for (const auto& it : processKeyframesId) {
 					SRef<Keyframe> retKeyframe;
-					keyframesManager->getKeyframe(it, retKeyframe);
+					keyframeCollection->getKeyframe(it, retKeyframe);
 					std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
 					bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
 					if (isFound) {

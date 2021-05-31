@@ -18,7 +18,7 @@
 #define SOLARRELOCALIZATIONPIPELINE_H
 
 #if _WIN32
-#ifdef SolARRelocalizationPipeline_API_DLLEXPORT
+#ifdef SolARPipelineRelocalization_API_DLLEXPORT
 #define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllexport)
 #else //SOLARRELOCALIZATIONPIPELINE_API_DLLEXPORT
 #define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllimport)
@@ -43,7 +43,7 @@
 #include "api/features/IDescriptorMatcher.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
-#include "api/solver/map/IMapper.h"
+#include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
 
@@ -141,15 +141,12 @@ private:
     CamCalibration                                          m_calibration;
     CamDistortion                                           m_distortion;
 
-    // Image ref
-    SRef<Image>                                             m_camImage;
+	// keyframe collection
+	SRef<KeyframeCollection>								m_keyframeCollection;
 
 	// storage components
-    SRef<IKeyframesManager>                                 m_keyframesManager;
-    SRef<ICovisibilityGraph>                                m_covisibilityGraph;
     SRef<reloc::IKeyframeRetriever>                         m_kfRetriever;
-    SRef<solver::map::IMapper>                              m_mapper;
-    SRef<image::IImageConvertor>                            m_imageConvertorUnity;
+    SRef<storage::IMapManager>								m_mapManager;
     SRef<features::IKeypointDetector>                       m_keypointsDetector;
     SRef<features::IDescriptorsExtractor>                   m_descriptorExtractor;
     SRef<features::IDescriptorMatcher>                      m_matcher;

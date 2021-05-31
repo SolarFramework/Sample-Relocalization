@@ -29,18 +29,12 @@ namespace RELOCALIZATION {
 // Public methods
 
 SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf::toUUID<SolARRelocalizationPipeline>())
-{
-    LOG_DEBUG(" SolARRelocalizationPipeline constructor");
-
+{    
     try {
         declareInterface<api::pipeline::IRelocalizationPipeline>(this);
-
-        LOG_DEBUG("Components injection declaration");
-
-        declareInjectable<api::storage::IKeyframesManager>(m_keyframesManager);
-        declareInjectable<api::storage::ICovisibilityGraph>(m_covisibilityGraph);
-        declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
-        declareInjectable<api::solver::map::IMapper>(m_mapper);
+        LOG_DEBUG("Components injection declaration");        
+        declareInjectable<storage::IMapManager>(m_mapManager);
+		declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
         declareInjectable<api::features::IKeypointDetector>(m_keypointsDetector);
         declareInjectable<api::features::IDescriptorsExtractor>(m_descriptorExtractor);
         declareInjectable<api::features::IDescriptorMatcher>(m_matcher);
@@ -57,7 +51,7 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
     catch (xpcf::Exception & e) {
         LOG_ERROR("The following exception has been caught {}", e.what());
     }
-
+	LOG_DEBUG(" SolARRelocalizationPipeline constructor");
 }
 
 void SolARRelocalizationPipeline::onInjected() {
@@ -78,69 +72,53 @@ SolARRelocalizationPipeline::~SolARRelocalizationPipeline()
 FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
-
 	return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const CameraParameters & cameraParams) {
-
-    LOG_DEBUG("SolARRelocalizationPipeline::setCameraParameters");
-
+FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const CameraParameters & cameraParams) 
+{
+	LOG_DEBUG("SolARRelocalizationPipeline::setCameraParameters");
     m_calibration = cameraParams.intrinsic;
     m_distortion = cameraParams.distortion;
-
     m_pnpRansac->setCameraParameters(m_calibration, m_distortion);
-
     LOG_DEBUG("Camera intrinsic / distortion = {} / {}", m_calibration, m_distortion);
-
-    LOG_DEBUG("Initialize sink image buffer");
-    unsigned char * r_imageData = new unsigned char[cameraParams.resolution.width * cameraParams.resolution.height * sizeof(unsigned char) * 3];
-    m_camImage = xpcf::utils::make_shared<Image>(r_imageData,cameraParams.resolution.width, cameraParams.resolution.height,
-                                                           Image::LAYOUT_BGR, Image::INTERLEAVED, Image::TYPE_8U);
     m_initOK = true;
-
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARRelocalizationPipeline::getCameraParameters(CameraParameters & cameraParams) const {
-
+FrameworkReturnCode SolARRelocalizationPipeline::getCameraParameters(CameraParameters & cameraParams) const 
+{
     LOG_DEBUG("SolARRelocalizationPipeline::getCameraParameters");
-
     if (m_initOK) {
-
         cameraParams.intrinsic = m_calibration;
         cameraParams.distortion = m_distortion;
-
         return FrameworkReturnCode::_SUCCESS;
     }
     else {
         LOG_DEBUG("Camera parameters have not been set!");
-
         return FrameworkReturnCode::_ERROR_;
     }
 }
 
-FrameworkReturnCode SolARRelocalizationPipeline::start() {
-
+FrameworkReturnCode SolARRelocalizationPipeline::start() 
+{
     LOG_DEBUG("SolARRelocalizationPipeline::start");
-
     if (m_initOK) {
-
         // Load map from file
-        if (m_mapper->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+        if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+			SRef<Map> map;
+			m_mapManager->getMap(map);
+			m_keyframeCollection = map->getConstKeyframeCollection();
             LOG_INFO("Load map done!");
-
             return FrameworkReturnCode::_SUCCESS;
         }
         else {
             LOG_ERROR("Cannot load map");
-
             return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
         LOG_DEBUG("Camera parameters have not been set!");
-
         return FrameworkReturnCode::_ERROR_;
     }
 }
@@ -148,17 +126,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::start() {
 FrameworkReturnCode SolARRelocalizationPipeline::stop()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::stop");
-
 	return FrameworkReturnCode::_SUCCESS;
 }
 
 FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                                          SolAR::datastructure::Transform3Df& pose, float_t & confidence) {
-
+                                                                          SolAR::datastructure::Transform3Df& pose, float_t & confidence) 
+{
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
-
     confidence = 0;
-
     if (m_initOK) {
 
         LOG_DEBUG("=> Detection");
@@ -187,7 +162,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
-                m_keyframesManager->getKeyframe(it, retKeyframe);
+                m_keyframeCollection->getKeyframe(it, retKeyframe);
                 std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
                 bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
                 if (isFound) {

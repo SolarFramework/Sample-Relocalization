@@ -1,9 +1,9 @@
 
-Version="0.9.1"
+Version="0.9.4"
 
 if [ -z "$1" ]
 then
-   filename="SolAR_Mapping_$Version"
+   filename="SolAR_Relocalization_$Version"
 else
    filename=$1
 fi
