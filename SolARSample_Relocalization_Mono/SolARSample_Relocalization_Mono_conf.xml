@@ -130,7 +130,7 @@
 		</configure>
 		<configure component="SolARImagesAsCameraOpencv">
 			<property name="calibrationFile" type="string" value="../../data/camera_calibration.yml"/>
-			<property name="imagesDirectoryPath" type="string" value="path to images"/>
+                        <property name="imagesDirectoryPath" type="string" value="../../data/data_hololens/loop_desktop_A/000/%08d.jpg"/>
 			<property name="delayTime" type="int" value="30"/>
 		</configure>
 		<configure component="SolARVideoAsCameraOpencv">

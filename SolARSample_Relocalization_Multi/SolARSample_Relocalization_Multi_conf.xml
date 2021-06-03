@@ -110,8 +110,8 @@
 	
 	<factory>
 		<bindings>
-			<bind interface="ICamera" to="SolARCameraOpencv"/>
-			<!--bind interface="ICamera" to="SolARImagesAsCameraOpencv"/-->
+                        <!--bind interface="ICamera" to="SolARCameraOpencv"/-->
+                        <bind interface="ICamera" to="SolARImagesAsCameraOpencv"/>
 			<!--bind interface="ICamera" to="SolARVideoAsCameraOpencv"/-->
 			<bind interface="IDescriptorsExtractor" to="SolARDescriptorsExtractorAKAZE2Opencv" />
 			<bind interface="IDescriptorMatcher" to="SolARDescriptorMatcherKNNOpencv" />
@@ -139,7 +139,7 @@
 			<property name="delayTime" type="int" value="30"/>
 		</configure>
 		<configure component="SolARMapManager">
-			<property name="directory" type="string" value="../../data/map"/>
+                        <property name="directory" type="string" value="../../data/map_hololens/mapA"/>
 			<property name="identificationFileName" type="string" value="identification.bin"/>
 			<property name="coordinateFileName" type="string" value="coordinate.bin"/>
 			<property name="pointCloudManagerFileName" type="string" value="pointcloud.bin"/>
