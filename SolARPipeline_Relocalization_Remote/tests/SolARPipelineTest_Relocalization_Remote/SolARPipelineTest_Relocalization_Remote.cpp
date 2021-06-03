@@ -18,7 +18,7 @@
 #include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
 #include "api/display/I3DPointsViewer.h"
-#include "api/solver/map/IMapper.h"
+#include "api/storage/IMapManager.h"
 #include "api/storage/IPointCloudManager.h"
 
 using namespace std;
@@ -115,11 +115,11 @@ int main(int argc, char* argv[])
                 auto arDevice = componentMgr->resolve<input::devices::IARDevice>();
                 auto imageViewerResult = componentMgr->resolve<display::IImageViewer>();
                 auto viewer3D = componentMgr->resolve<display::I3DPointsViewer>();
-                auto mapper = componentMgr->resolve<solver::map::IMapper>();
+                auto mapperManager = componentMgr->resolve<storage::IMapManager>();
                 auto pointCloudManager = componentMgr->resolve<storage::IPointCloudManager>();
 
                 // Load map from file
-                if (mapper->loadFromFile() != FrameworkReturnCode::_SUCCESS) {
+                if (mapperManager->loadFromFile() != FrameworkReturnCode::_SUCCESS) {
                     LOG_INFO("Load map failed!");
 
                     return -1;
