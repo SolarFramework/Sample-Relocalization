@@ -34,7 +34,8 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInterface<api::pipeline::IRelocalizationPipeline>(this);
         LOG_DEBUG("Components injection declaration");        
         declareInjectable<storage::IMapManager>(m_mapManager);
-		declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
+        declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapUpdatePipeline, true);
+        declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
         declareInjectable<api::features::IKeypointDetector>(m_keypointsDetector);
         declareInjectable<api::features::IDescriptorsExtractor>(m_descriptorExtractor);
         declareInjectable<api::features::IDescriptorMatcher>(m_matcher);
@@ -104,21 +105,73 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::start");
     if (m_initOK) {
-        // Load map from file
-        if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
-			SRef<Map> map;
-			m_mapManager->getMap(map);
-			m_keyframeCollection = map->getConstKeyframeCollection();
-            LOG_INFO("Load map done!");
-            return FrameworkReturnCode::_SUCCESS;
+
+        // Test if map must be requested to a remote map update pipeline (primarily)
+        // or loaded from file
+
+        if (m_mapUpdatePipeline != nullptr) {
+
+            LOG_DEBUG("Get initial map from a remote map update pipeline");
+
+            SRef<Map> map;
+
+            try {
+                if (m_mapUpdatePipeline->init() == FrameworkReturnCode::_SUCCESS) {
+
+                    if (m_mapUpdatePipeline->getMapRequest(map) == FrameworkReturnCode::_SUCCESS) {
+                        if (map != nullptr) {
+                            LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+                            m_mapManager->setMap(map);
+                            m_keyframeCollection = map->getConstKeyframeCollection();
+                            LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+                            LOG_INFO("Get map from remote map update pipeline!");
+                        }
+                        else {
+                            LOG_INFO("Initial map is empty");
+                        }
+                        return FrameworkReturnCode::_SUCCESS;
+                    }
+                    else {
+                        LOG_ERROR("Can not get initial map from remote map update pipeline!");
+                        return FrameworkReturnCode::_ERROR_;
+                    }
+                }
+                else {
+                    LOG_ERROR("Can not initialize remote map update pipeline!");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to map update pipeline: {}", e.what());
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+        else if (m_mapManager != nullptr) {
+
+            LOG_DEBUG("Load initial map from local file");
+
+            // Load map from file
+            if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+                SRef<Map> map;
+                m_mapManager->getMap(map);
+                LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+                m_keyframeCollection = map->getConstKeyframeCollection();
+                LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+                LOG_INFO("Load map done!");
+                return FrameworkReturnCode::_SUCCESS;
+            }
+            else {
+                LOG_ERROR("Cannot load map");
+                return FrameworkReturnCode::_ERROR_;
+            }
         }
         else {
-            LOG_ERROR("Cannot load map");
+            LOG_ERROR("Initial map not defined!");
             return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
-        LOG_DEBUG("Camera parameters have not been set!");
+        LOG_ERROR("Camera parameters have not been set!");
         return FrameworkReturnCode::_ERROR_;
     }
 }
