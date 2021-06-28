@@ -18,13 +18,13 @@
 #define SOLARRELOCALIZATIONPIPELINE_H
 
 #if _WIN32
-#ifdef SolARPipelineRelocalization_API_DLLEXPORT
-#define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllexport)
-#else //SOLARRELOCALIZATIONPIPELINE_API_DLLEXPORT
-#define SOLARRELOCALIZATIONPIPELINE_EXPORT_API __declspec(dllimport)
-#endif //SOLARRELOCALIZATIONPIPELINE_API_DLLEXPORT
+#ifdef SolARPipeline_Relocalization_API_DLLEXPORT
+#define SOLARPIPELINE_RELOCALIZATION_EXPORT_API __declspec(dllexport)
+#else //SolARPipeline_Relocalization_API_DLLEXPORT
+#define SOLARPIPELINE_RELOCALIZATION_EXPORT_API __declspec(dllimport)
+#endif //SolARPipeline_Relocalization_API_DLLEXPORT
 #else //_WIN32
-#define SOLARRELOCALIZATIONPIPELINE_EXPORT_API
+#define SOLARPIPELINE_RELOCALIZATION_EXPORT_API
 #endif //_WIN32
 
 #include "xpcf/core/traits.h"
@@ -82,7 +82,7 @@ namespace RELOCALIZATION {
  *
  */
 
-class SOLARRELOCALIZATIONPIPELINE_EXPORT_API SolARRelocalizationPipeline : public org::bcom::xpcf::ConfigurableBase,
+class SOLARPIPELINE_RELOCALIZATION_EXPORT_API SolARRelocalizationPipeline : public org::bcom::xpcf::ConfigurableBase,
     public api::pipeline::IRelocalizationPipeline
 {
 public:

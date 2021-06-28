@@ -1,6 +1,6 @@
 ## global defintions : target lib name, version
 TARGET = SolARPipelineTest_Relocalization_Remote
-VERSION=0.9.3
+VERSION=0.10.0
 
 CONFIG += c++1z
 CONFIG += console
