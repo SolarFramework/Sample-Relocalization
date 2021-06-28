@@ -73,7 +73,8 @@ win32 {
 DISTFILES += \
     SolARPipeline_Relocalization_Remote_modules.xml \
     SolARPipeline_Relocalization_Remote_properties.xml \
-    packagedependencies.txt
+    packagedependencies.txt \
+    start_relocalization_service.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
 xml_files.files =  SolARPipeline_Relocalization_Remote_modules.xml \
