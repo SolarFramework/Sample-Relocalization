@@ -48,6 +48,7 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         LOG_DEBUG("Initialize instance attributes");
         m_minNbInliers = 0;
         m_initOK = false;
+        m_cameraOK = false;
     }
     catch (xpcf::Exception & e) {
         LOG_ERROR("The following exception has been caught {}", e.what());
@@ -73,7 +74,75 @@ SolARRelocalizationPipeline::~SolARRelocalizationPipeline()
 FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
-	return FrameworkReturnCode::_SUCCESS;
+
+    m_initOK = true;
+
+    // Test if map must be requested to a remote map update pipeline (primarily)
+    // or loaded from file
+
+    if (m_mapUpdatePipeline != nullptr) {
+
+        LOG_DEBUG("Get initial map from a remote map update pipeline");
+
+        LOG_DEBUG("Map Update pipeline URL = {}",
+                 m_mapUpdatePipeline->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+
+        SRef<Map> map;
+
+        try {
+            if (m_mapUpdatePipeline->init() == FrameworkReturnCode::_SUCCESS) {
+
+                if (m_mapUpdatePipeline->getMapRequest(map) == FrameworkReturnCode::_SUCCESS) {
+                    if (map != nullptr) {
+                        LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+                        m_mapManager->setMap(map);
+                        m_keyframeCollection = map->getConstKeyframeCollection();
+                        LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+                        LOG_INFO("Get map from remote map update pipeline");
+                    }
+                    else {
+                        LOG_INFO("Initial map is empty");
+                    }
+                    return FrameworkReturnCode::_SUCCESS;
+                }
+                else {
+                    LOG_ERROR("Can not get initial map from remote map update pipeline");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }
+            else {
+                LOG_ERROR("Can not initialize remote map update pipeline");
+                return FrameworkReturnCode::_ERROR_;
+            }
+
+        }  catch (const std::exception &e) {
+            LOG_ERROR("Exception raised during remote request to map update pipeline: {}", e.what());
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else if (m_mapManager != nullptr) {
+
+        LOG_DEBUG("Load initial map from local file");
+
+        // Load map from file
+        if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+            SRef<Map> map;
+            m_mapManager->getMap(map);
+            LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+            m_keyframeCollection = map->getConstKeyframeCollection();
+            LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+            LOG_INFO("Load map done");
+            return FrameworkReturnCode::_SUCCESS;
+        }
+        else {
+            LOG_ERROR("Cannot load map");
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_ERROR("Initial map not defined");
+        return FrameworkReturnCode::_ERROR_;
+    }
 }
 
 FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const CameraParameters & cameraParams) 
@@ -83,20 +152,20 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
     m_distortion = cameraParams.distortion;
     m_pnpRansac->setCameraParameters(m_calibration, m_distortion);
     LOG_DEBUG("Camera intrinsic / distortion = {} / {}", m_calibration, m_distortion);
-    m_initOK = true;
+    m_cameraOK = true;
     return FrameworkReturnCode::_SUCCESS;
 }
 
 FrameworkReturnCode SolARRelocalizationPipeline::getCameraParameters(CameraParameters & cameraParams) const 
 {
     LOG_DEBUG("SolARRelocalizationPipeline::getCameraParameters");
-    if (m_initOK) {
+    if (m_cameraOK) {
         cameraParams.intrinsic = m_calibration;
         cameraParams.distortion = m_distortion;
         return FrameworkReturnCode::_SUCCESS;
     }
     else {
-        LOG_DEBUG("Camera parameters have not been set!");
+        LOG_ERROR("Camera parameters have not been set");
         return FrameworkReturnCode::_ERROR_;
     }
 }
@@ -104,75 +173,17 @@ FrameworkReturnCode SolARRelocalizationPipeline::getCameraParameters(CameraParam
 FrameworkReturnCode SolARRelocalizationPipeline::start() 
 {
     LOG_DEBUG("SolARRelocalizationPipeline::start");
-    if (m_initOK) {
 
-        // Test if map must be requested to a remote map update pipeline (primarily)
-        // or loaded from file
-
-        if (m_mapUpdatePipeline != nullptr) {
-
-            LOG_DEBUG("Get initial map from a remote map update pipeline");
-
-            SRef<Map> map;
-
-            try {
-                if (m_mapUpdatePipeline->init() == FrameworkReturnCode::_SUCCESS) {
-
-                    if (m_mapUpdatePipeline->getMapRequest(map) == FrameworkReturnCode::_SUCCESS) {
-                        if (map != nullptr) {
-                            LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
-                            m_mapManager->setMap(map);
-                            m_keyframeCollection = map->getConstKeyframeCollection();
-                            LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
-                            LOG_INFO("Get map from remote map update pipeline!");
-                        }
-                        else {
-                            LOG_INFO("Initial map is empty");
-                        }
-                        return FrameworkReturnCode::_SUCCESS;
-                    }
-                    else {
-                        LOG_ERROR("Can not get initial map from remote map update pipeline!");
-                        return FrameworkReturnCode::_ERROR_;
-                    }
-                }
-                else {
-                    LOG_ERROR("Can not initialize remote map update pipeline!");
-                    return FrameworkReturnCode::_ERROR_;
-                }
-
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to map update pipeline: {}", e.what());
-                return FrameworkReturnCode::_ERROR_;
-            }
-        }
-        else if (m_mapManager != nullptr) {
-
-            LOG_DEBUG("Load initial map from local file");
-
-            // Load map from file
-            if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
-                SRef<Map> map;
-                m_mapManager->getMap(map);
-                LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
-                m_keyframeCollection = map->getConstKeyframeCollection();
-                LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
-                LOG_INFO("Load map done!");
-                return FrameworkReturnCode::_SUCCESS;
-            }
-            else {
-                LOG_ERROR("Cannot load map");
-                return FrameworkReturnCode::_ERROR_;
-            }
-        }
-        else {
-            LOG_ERROR("Initial map not defined!");
-            return FrameworkReturnCode::_ERROR_;
-        }
+    if (!m_initOK) {
+        LOG_ERROR("Pipeline has not been initialized");
+        return FrameworkReturnCode::_ERROR_;
+    }
+    else if (!m_cameraOK){
+        LOG_ERROR("Camera parameters have not been set");
+        return FrameworkReturnCode::_ERROR_;
     }
     else {
-        LOG_ERROR("Camera parameters have not been set!");
-        return FrameworkReturnCode::_ERROR_;
+        return FrameworkReturnCode::_SUCCESS;
     }
 }
 
@@ -187,7 +198,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
     confidence = 0;
-    if (m_initOK) {
+    if ((m_initOK) && (m_cameraOK)) {
 
         LOG_DEBUG("=> Detection");
 
@@ -243,7 +254,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 for (const auto& it : inliers)
                     pts2DInliers.push_back(pts2D[it]);
 
-                LOG_DEBUG("Got the new pose!");
+                LOG_DEBUG("Got the new pose");
                 return FrameworkReturnCode::_SUCCESS;
             }
             else {
@@ -253,9 +264,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
         }
     }
     else {
-        LOG_DEBUG("Camera parameters have not been set!");
-
-        return FrameworkReturnCode::_ERROR_;
+        if (!m_initOK) {
+            LOG_ERROR("Pipeline has not been initialized");
+            return FrameworkReturnCode::_ERROR_;
+        }
+        else if (!m_cameraOK){
+            LOG_ERROR("Camera parameters have not been set");
+            return FrameworkReturnCode::_ERROR_;
+        }
     }
 }
 

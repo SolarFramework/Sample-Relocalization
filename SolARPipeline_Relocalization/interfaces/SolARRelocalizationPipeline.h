@@ -135,7 +135,7 @@ private:
 private:
 
 	// State flag of the pipeline
-    bool m_initOK = false;
+    bool m_initOK = false, m_cameraOK = false;
     int m_minNbInliers;
 
     // Camera parameters
