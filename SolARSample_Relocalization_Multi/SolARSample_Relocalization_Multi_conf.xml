@@ -110,8 +110,8 @@
 	
 	<factory>
 		<bindings>
-                        <!--bind interface="ICamera" to="SolARCameraOpencv"/-->
-                        <bind interface="ICamera" to="SolARImagesAsCameraOpencv"/>
+			<bind interface="ICamera" to="SolARCameraOpencv"/>
+			<!--bind interface="ICamera" to="SolARImagesAsCameraOpencv"/-->
 			<!--bind interface="ICamera" to="SolARVideoAsCameraOpencv"/-->
 			<bind interface="IDescriptorsExtractor" to="SolARDescriptorsExtractorAKAZE2Opencv" />
 			<bind interface="IDescriptorMatcher" to="SolARDescriptorMatcherKNNOpencv" />
@@ -125,21 +125,21 @@
 	
     <properties>
         <configure component="SolARCameraOpencv">
-			<property name="calibrationFile" type="string" value="../../data/camera_calibration.yml"/>
+			<property name="calibrationFile" type="string" value="camera_calibration.json"/> <!-- Configure to the used camera -->
             <property name="deviceID" type="uint" value="0"/>
 		</configure>
 		<configure component="SolARImagesAsCameraOpencv">
-			<property name="calibrationFile" type="string" value="../../data/camera_calibration.yml"/>
-			<property name="imagesDirectoryPath" type="string" value="../../data/data_hololens/loop_desktop_A/000/%08d.jpg"/>
+			<property name="calibrationFile" type="string" value="path to camera calibration"/>
+			<property name="imagesDirectoryPath" type="string" value="path to images"/>
 			<property name="delayTime" type="int" value="30"/>
 		</configure>
 		<configure component="SolARVideoAsCameraOpencv">
-			<property name="calibrationFile" type="string" value="../../data/camera_calibration.yml"/>
+			<property name="calibrationFile" type="string" value="path to camera calibration"/>
 			<property name="videoPath" type="string" value="path to video"/>
 			<property name="delayTime" type="int" value="30"/>
 		</configure>
 		<configure component="SolARMapManager">
-                        <property name="directory" type="string" value="../../data/map_hololens/mapA"/>
+			<property name="directory" type="string" value="map"/> <!-- Path to the used map for relocalization -->
 			<property name="identificationFileName" type="string" value="identification.bin"/>
 			<property name="coordinateFileName" type="string" value="coordinate.bin"/>
 			<property name="pointCloudManagerFileName" type="string" value="pointcloud.bin"/>

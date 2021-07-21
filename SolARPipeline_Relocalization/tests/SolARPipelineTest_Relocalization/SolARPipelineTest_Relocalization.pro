@@ -66,8 +66,8 @@ DISTFILES += \
     PipelineRelocalization.xml
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml)\
-                    $$files($${PWD}/camera_calibration.yml)
+config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml) \
+                    $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
 
 linux {

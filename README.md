@@ -26,7 +26,7 @@ This script will install the following data into the `./data` folder:
 ### Camera Calibration
 
 We provide a defaut camera calibration file that contains intrinsic parameters of the camera logitech C920.
-If you want to change the calibration parameters of the camera, edit the `camera_calibration.yml` file.
+If you want to change the calibration parameters of the camera, edit the `camera_calibration.json` file.
 
 ### Prebuilt map
 
@@ -34,7 +34,7 @@ These relocalization samples require a prebuilt map of a scene.
 To do this, you can use our [SLAM samples](https://github.com/SolarFramework/Sample-Slam) that allow to create a map from a RGB sequence.
 When it finishes, you archive a map in a folder. 
 
-Open the configuration file corresponding to each relocalization sample and set the **directory** value of the **SolARMapper** to the path to the prebuilt map above.
+Open the configuration file corresponding to each relocalization sample and set the **directory** value of the **SolARMapManager** to the path to the prebuilt map above.
 
 ### Run samples
 

@@ -99,7 +99,4 @@ run.sh
 data/map*
 data/*.avi
 data/fbow_voc
-fbow_voc.zip
-map.zip
-data/tum_camera_calibration.yml
-data/
+

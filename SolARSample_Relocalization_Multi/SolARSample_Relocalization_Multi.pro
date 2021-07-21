@@ -69,8 +69,8 @@ win32 {
 }
 
 configfile.path = $${TARGETDEPLOYDIR}/
-configfile.files = $$files($${PWD}/SolARSample_Relocalization_Multi_conf.xml)\
-					$$files($${PWD}/camera_calibration.yml)
+configfile.files = $$files($${PWD}/SolARSample_Relocalization_Multi_conf.xml) \
+					$$files($${PWD}/camera_calibration.json)
 INSTALLS += configfile
 
 linux {
