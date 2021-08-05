@@ -17,7 +17,7 @@ curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_
 
 :: Download TUM map for testing relocalization
 echo Download TUM map for testing relocalization
-curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_win_0_9_1.zip -L -o map.zip
+curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_win_0_10_0.zip -L -o map.zip
 echo Unzip Map
 powershell Expand-Archive map.zip -DestinationPath .\data -F
 del map.zip

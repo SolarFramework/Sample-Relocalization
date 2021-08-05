@@ -11,6 +11,6 @@ curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_c
 curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_dataset_freiburg3_long_office_household_relocalization.avi -L -o data/rgbd_dataset_freiburg3_long_office_household_relocalization.avi
 
 # Download TUM map for testing relocalization
-curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_linux_0_9_1.zip -L -o map.zip
+curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_linux_0_10_0.zip -L -o map.zip
 unzip -o map.zip -d ./data
 rm map.zip
