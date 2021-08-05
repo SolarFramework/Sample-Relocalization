@@ -38,6 +38,10 @@ include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/templateappconf
 SOURCES += \
     SolARPipelineTest_Relocalization_Remote.cpp
 
+unix {
+    LIBS += -ldl
+    QMAKE_CXXFLAGS += -DBOOST_LOG_DYN_LINK
+}
 
 linux {
     LIBS += -ldl

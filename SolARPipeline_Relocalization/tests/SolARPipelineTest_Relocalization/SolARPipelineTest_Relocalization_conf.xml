@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <xpcf-registry autoAlias="true">  
-	<module uuid="29c5afa7-df22-4704-b5e8-6c0d4ee80036" name="SolARPipeline_Relocalization" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipeline_Relocalization/0.10.0/lib/x86_64/shared">
+        <module uuid="29c5afa7-df22-4704-b5e8-6c0d4ee80036" name="SolARPipelineRelocalization" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipelineRelocalization/0.10.0/lib/x86_64/shared">
 		<component uuid="890d718b-3feb-44db-a16f-1330386d5fb2" name="SolARRelocalizationPipeline" description="SolARRelocalizationPipeline implements api::pipeline::IRelocalizationPipeline interface">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="ef2a631d-93c9-4979-ad1e-5fa16d5d00ef" name="IRelocalizationPipeline" description="The interface to define a relocalization processing pipeline"/>
