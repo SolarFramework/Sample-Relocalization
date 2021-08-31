@@ -1,7 +1,7 @@
 node("master") {
 
     SolArModulePipeline {
-        moduleName="SolARPipeline_Relocalization"
+        moduleName="SolARPipelineRelocalization"
         dirName="SolARBuild"
         buildDir="SolARPipeline_Relocalization"
         android=true
