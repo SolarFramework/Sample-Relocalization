@@ -18,7 +18,7 @@
 #define SOLARRELOCALIZATIONPIPELINE_H
 
 #if _WIN32
-#ifdef SolARPipeline_Relocalization_API_DLLEXPORT
+#ifdef SolARPipelineRelocalization_API_DLLEXPORT
 #define SOLARPIPELINE_RELOCALIZATION_EXPORT_API __declspec(dllexport)
 #else //SolARPipeline_Relocalization_API_DLLEXPORT
 #define SOLARPIPELINE_RELOCALIZATION_EXPORT_API __declspec(dllimport)

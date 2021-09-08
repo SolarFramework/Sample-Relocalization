@@ -41,6 +41,10 @@ SOURCES += \
     GrpcServerManager.cpp\
     SolARPipeline_Relocalization_Remote.cpp
 
+unix {
+    LIBS += -ldl
+    QMAKE_CXXFLAGS += -DBOOST_LOG_DYN_LINK
+}
 
 linux {
     LIBS += -ldl
