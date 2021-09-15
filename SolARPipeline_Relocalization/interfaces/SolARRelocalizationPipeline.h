@@ -38,14 +38,14 @@
 #include "core/Log.h"
 #include "api/input/devices/ICamera.h"
 #include "api/display/IImageViewer.h"
-#include "api/features/IKeypointDetector.h"
-#include "api/features/IDescriptorsExtractor.h"
+#include "api/features/IDescriptorsExtractorFromImage.h"
 #include "api/features/IDescriptorMatcher.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
 #include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
+#include "api/geom/IUndistortPoints.h"
 #include "api/pipeline/IMapUpdatePipeline.h"
 
 using namespace SolAR;
@@ -70,14 +70,14 @@ namespace RELOCALIZATION {
  *
  * @SolARComponentInjectablesBegin
  * @SolARComponentInjectable{SolAR::api::input::devices::ICamera}
- * @SolARComponentInjectable{SolAR::api::features::IKeypointDetector}
- * @SolARComponentInjectable{SolAR::api::features::IDescriptorsExtractor}
+ * @SolARComponentInjectable{SolAR::api::features::IDescriptorsExtractorFromImage}
  * @SolARComponentInjectable{SolAR::api::features::IDescriptorMatcher}
  * @SolARComponentInjectable{SolAR::api::features::IMatchesFilter}
  * @SolARComponentInjectable{SolAR::api::solver::pose::I3DTransformSACFinderFrom2D3D}
  * @SolARComponentInjectable{SolAR::api::solver::pose::IMapper}
  * @SolARComponentInjectable{SolAR::api::solver::pose::I2D3DCorrespondencesFinder}
  * @SolARComponentInjectable{SolAR::api::image::IImageConvertor}
+ * @SolARComponentInjectable{SolAR::api::geom::IUndistortPoints}
  * @SolARComponentInjectablesEnd
  *
  */
@@ -149,12 +149,12 @@ private:
     SRef<reloc::IKeyframeRetriever>                         m_kfRetriever;
     SRef<storage::IMapManager>								m_mapManager;
     SRef<pipeline::IMapUpdatePipeline>                      m_mapUpdatePipeline;
-    SRef<features::IKeypointDetector>                       m_keypointsDetector;
-    SRef<features::IDescriptorsExtractor>                   m_descriptorExtractor;
+    SRef<features::IDescriptorsExtractorFromImage>          m_descriptorExtractor;
     SRef<features::IDescriptorMatcher>                      m_matcher;
     SRef<solver::pose::I2D3DCorrespondencesFinder>          m_corr2D3DFinder;
     SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>  m_pnpRansac;
     SRef<features::IMatchesFilter>                          m_matchesFilter;
+    SRef<geom::IUndistortPoints>							m_undistortKeypoints;
 };
 
 } // namespace RELOCALIZATION

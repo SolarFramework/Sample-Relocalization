@@ -39,7 +39,11 @@
 		<component uuid="3787eaa6-d0a0-11e7-8fab-cec278b6b50a" name="SolARDescriptorsExtractorSIFTOpencv" description="SolARDescriptorsExtractorSIFTOpencv">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="c0e49ff1-0696-4fe6-85a8-9b2c1e155d2e" name="IDescriptorsExtractor" description="IDescriptorsExtractor"/>
-                </component>
+		</component>
+		<component uuid="cf2721f2-0dc9-4442-ad1e-90c0ab12b0ff" name="SolARDescriptorsExtractorFromImageOpencv" description="SolARDescriptorsExtractorFromImageOpencv">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="1cd4f5f1-6b74-413b-9725-69653aee48ef" name="IDescriptorsExtractorFromImage" description="IDescriptorsExtractorFromImage"/>
+		</component>
 		<component uuid="7823dac8-1597-41cf-bdef-59aa22f3d40a" name="SolARDescriptorMatcherKNNOpencv" description="SolARDescriptorMatcherKNNOpencv">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="dda38a40-c50a-4e7d-8433-0f04c7c98518" name="IDescriptorMatcher" description="IDescriptorMatcher"/>
@@ -75,6 +79,10 @@
 		<component uuid="741fc298-0149-4322-a7a9-ccb971e857ba" name="SolARProjectOpencv" description="SolARProjectOpencv">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="b485f37d-a8ea-49f6-b361-f2b30777d9ba" name="IProject" description="IProject"/>
+		</component>
+		<component uuid="d926e249-8b7f-46e0-8cbd-f981ceb8f921" name="SolARUndistortPointsOpencv" description="SolARUndistortPointsOpencv">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="a345a1d2-c3f3-497f-948b-cd1a199e6657" name="IUndistortPoints" description="IUndistortPoints"/>
 		</component>
 	</module>
 	
@@ -120,7 +128,7 @@
 			<bind interface="ICamera" to="SolARCameraOpencv"/>
 			<!--bind interface="ICamera" to="SolARImagesAsCameraOpencv"/-->
 			<!--bind interface="ICamera" to="SolARVideoAsCameraOpencv"/-->
-			<bind interface="IDescriptorsExtractor" to="SolARDescriptorsExtractorAKAZE2Opencv" />
+			<bind interface="IDescriptorsExtractorFromImage" to="SolARDescriptorsExtractorFromImageOpencv" />
 			<bind interface="IDescriptorMatcher" to="SolARDescriptorMatcherKNNOpencv" />
 			<bind interface="IMapManager" to="SolARMapManager" scope="Singleton"/>
 			<bind interface="IPointCloudManager" to="SolARPointCloudManager" scope="Singleton"/>
@@ -128,6 +136,12 @@
 			<bind interface="ICovisibilityGraphManager" to="SolARCovisibilityGraphManager" scope="Singleton"/>
 			<bind interface="IKeyframeRetriever" to="SolARKeyframeRetrieverFBOW" scope="Singleton"/>
 		</bindings>
+		<injects>		
+			<inject to="SolARDescriptorsExtractorFromImageOpencv">
+				<bind interface="IKeypointDetector" to="SolARKeypointDetectorOpencv"/>
+				<bind interface="IDescriptorsExtractor" to="SolARDescriptorsExtractorAKAZE2Opencv"/>
+			</inject>			
+		</injects>
 	</factory>
 
 	<properties>
