@@ -96,6 +96,7 @@ Release/
 *.sln
 *aps
 run.sh
+start_service.sh
 data/map*
 data/*.avi
 data/fbow_voc
