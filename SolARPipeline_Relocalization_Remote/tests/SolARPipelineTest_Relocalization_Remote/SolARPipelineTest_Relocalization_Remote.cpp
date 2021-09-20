@@ -131,8 +131,8 @@ int main(int argc, char* argv[])
                     LOG_INFO("Set relocalization pipeline camera parameters");
 
                     // Load camera intrinsics parameters
-                    CameraParameters camParams;
-                    camParams = arDevice->getParameters(0);
+                    CameraRigParameters camRigParams = arDevice->getCameraParameters();
+                    CameraParameters camParams = camRigParams.cameraParams[INDEX_USE_CAMERA];
 
                     if (gRelocalizationPipeline->setCameraParameters(camParams) == FrameworkReturnCode::_SUCCESS) {
 
