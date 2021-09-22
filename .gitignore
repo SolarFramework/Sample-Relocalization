@@ -95,9 +95,10 @@ Release/
 *.pc
 *.sln
 *aps
-run.sh
+./run.sh
 start_service.sh
 data/map*
+data/data_hololens*
 data/*.avi
 data/fbow_voc
 
