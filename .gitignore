@@ -100,3 +100,5 @@ data/map*
 data/*.avi
 data/fbow_voc
 
+
+data/
