@@ -24,13 +24,13 @@
 #include "api/display/I3DOverlay.h"
 #include "api/display/I2DOverlay.h"
 #include "api/display/I3DPointsViewer.h"
-#include "api/features/IKeypointDetector.h"
-#include "api/features/IDescriptorsExtractor.h"
+#include "api/features/IDescriptorsExtractorFromImage.h"
 #include "api/features/IDescriptorMatcher.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
 #include "api/storage/IMapManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
+#include "api/geom/IUndistortPoints.h"
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -70,12 +70,12 @@ int main(int argc, char *argv[])
 		auto viewer3D = xpcfComponentManager->resolve<display::I3DPointsViewer>();
 		auto mapManager = xpcfComponentManager->resolve<storage::IMapManager>();
 		auto keyframeRetriever = xpcfComponentManager->resolve<reloc::IKeyframeRetriever>();
-		auto keypointsDetector = xpcfComponentManager->resolve<features::IKeypointDetector>();
-		auto descriptorExtractor = xpcfComponentManager->resolve<features::IDescriptorsExtractor>();
+		auto descriptorExtractor = xpcfComponentManager->resolve<features::IDescriptorsExtractorFromImage>();
 		auto matcher = xpcfComponentManager->resolve<features::IDescriptorMatcher>();
 		auto corr2D3DFinder = xpcfComponentManager->resolve<solver::pose::I2D3DCorrespondencesFinder>();
 		auto pnpRansac = xpcfComponentManager->resolve<api::solver::pose::I3DTransformSACFinderFrom2D3D>();
 		auto matchesFilter = xpcfComponentManager->resolve<features::IMatchesFilter>();
+		auto undistortKeypoints = xpcfComponentManager->resolve<api::geom::IUndistortPoints>();
 		LOG_INFO("Components created!");
 
 		/* Start camera capture */
@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
 		camParams = camera->getParameters();
 		overlay3D->setCameraParameters(camParams.intrinsic, camParams.distortion);
 		pnpRansac->setCameraParameters(camParams.intrinsic, camParams.distortion);
+		undistortKeypoints->setCameraParameters(camParams.intrinsic, camParams.distortion);
 		LOG_DEBUG("Loaded intrinsics \n{}\n\n{}", camParams.intrinsic, camParams.distortion);
 
 		/* Get min number of inliers to valid a pose by pnp ransac */
@@ -125,8 +126,7 @@ int main(int argc, char *argv[])
 
 		// buffers
 		xpcf::DropBuffer<SRef<Image>>				m_dropBufferCamImageCapture;
-		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferKeypoints;
-		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferFrameDescriptors;
+		xpcf::DropBuffer<SRef<Frame>>				m_dropBufferFrame;
 		xpcf::DropBuffer<std::pair<SRef<Frame>, std::vector<Transform3Df>>> m_dropBufferDisplay;
 
 		// variables
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 			// feature matching to reference keyframe			
 			std::vector<DescriptorMatch> matches;
 			matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
-			matchesFilter->filter(matches, matches, candidateKf->getKeypoints(), frame->getKeypoints());
+			matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
 			if (matches.size() < minNbInliers)
 				return false;
 			// find 2D-3D point correspondences
@@ -163,38 +163,28 @@ int main(int argc, char *argv[])
 			m_dropBufferCamImageCapture.push(image);
 		};
 
-		/* Keypoint detection task */
-		auto fnDetection = [&]()
+		/* Feature extraction task */
+		auto fnExtraction = [&]()
 		{
 			SRef<Image> image;
 			if (!m_dropBufferCamImageCapture.tryPop(image)) {
 				xpcf::DelegateTask::yield();
 				return;
 			}
-			std::vector<Keypoint> keypoints;
-			keypointsDetector->detect(image, keypoints);
-			m_dropBufferKeypoints.push(xpcf::utils::make_shared<Frame>(keypoints, nullptr, image, Transform3Df::Identity()));
-		};
-
-		/* Feature extraction task */
-		auto fnExtraction = [&]()
-		{
-			SRef<Frame> frame;
-			if (!m_dropBufferKeypoints.tryPop(frame)) {
-				xpcf::DelegateTask::yield();
-				return;
-			}
+			std::vector<Keypoint> keypoints, undistortedKeypoints;
 			SRef<DescriptorBuffer> descriptors;
-			descriptorExtractor->extract(frame->getView(), frame->getKeypoints(), descriptors);
-			frame->setDescriptors(descriptors);
-			m_dropBufferFrameDescriptors.push(frame);
+			if (descriptorExtractor->extract(image, keypoints, descriptors) == FrameworkReturnCode::_SUCCESS) {
+				undistortKeypoints->undistort(keypoints, undistortedKeypoints);
+				SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
+				m_dropBufferFrame.push(frame);
+			}			
 		};
 
         /* Relocalization task */
 		auto fnRelocalization = [&]()
 		{
 			SRef<Frame> frame;
-			if (!m_dropBufferFrameDescriptors.tryPop(frame)) {
+			if (!m_dropBufferFrame.tryPop(frame)) {
 				xpcf::DelegateTask::yield();
 				return;
 			}
@@ -250,12 +240,10 @@ int main(int argc, char *argv[])
 		
 		// instantiate and start tasks
 		xpcf::DelegateTask taskCamImageCapture(fnCamImageCapture);
-		xpcf::DelegateTask taskDetection(fnDetection);
 		xpcf::DelegateTask taskExtraction(fnExtraction);
 		xpcf::DelegateTask taskRelocalization(fnRelocalization);
 
 		taskCamImageCapture.start();
-		taskDetection.start();
 		taskExtraction.start();
 		taskRelocalization.start();
 
@@ -281,7 +269,6 @@ int main(int argc, char *argv[])
 
 		// Stop tasks
 		taskCamImageCapture.stop();
-		taskDetection.stop();
 		taskExtraction.stop();
 		taskRelocalization.stop();
 
