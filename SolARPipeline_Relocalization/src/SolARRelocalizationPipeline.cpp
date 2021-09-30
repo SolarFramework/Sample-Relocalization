@@ -36,12 +36,12 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInjectable<storage::IMapManager>(m_mapManager);
         declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapUpdatePipeline, true);
         declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
-        declareInjectable<api::features::IKeypointDetector>(m_keypointsDetector);
-        declareInjectable<api::features::IDescriptorsExtractor>(m_descriptorExtractor);
+        declareInjectable<api::features::IDescriptorsExtractorFromImage>(m_descriptorExtractor);
         declareInjectable<api::features::IDescriptorMatcher>(m_matcher);
         declareInjectable<api::solver::pose::I2D3DCorrespondencesFinder>(m_corr2D3DFinder);
         declareInjectable<api::solver::pose::I3DTransformSACFinderFrom2D3D>(m_pnpRansac);
         declareInjectable<api::features::IMatchesFilter>(m_matchesFilter);
+		declareInjectable<api::geom::IUndistortPoints>(m_undistortKeypoints);
 
         LOG_DEBUG("All component injections declared");
 
@@ -151,6 +151,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
     m_calibration = cameraParams.intrinsic;
     m_distortion = cameraParams.distortion;
     m_pnpRansac->setCameraParameters(m_calibration, m_distortion);
+	m_undistortKeypoints->setCameraParameters(m_calibration, m_distortion);
     LOG_DEBUG("Camera intrinsic / distortion = {} / {}", m_calibration, m_distortion);
     m_cameraOK = true;
     return FrameworkReturnCode::_SUCCESS;
@@ -200,17 +201,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
     confidence = 0;
     if ((m_initOK) && (m_cameraOK)) {
 
-        LOG_DEBUG("=> Detection");
+        LOG_DEBUG("=> Detection and extraction");
 
-        std::vector<Keypoint> keypoints;
-        m_keypointsDetector->detect(image, keypoints);
-        SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, nullptr, image, Transform3Df::Identity());
-
-        LOG_DEBUG("=> Extraction");
-
-        SRef<DescriptorBuffer>	descriptors;
-        m_descriptorExtractor->extract(frame->getView(), frame->getKeypoints(), descriptors);
-        frame->setDescriptors(descriptors);
+		std::vector<Keypoint> keypoints, undistortedKeypoints;
+		SRef<DescriptorBuffer> descriptors;
+		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
+			return FrameworkReturnCode::_ERROR_;
+		m_undistortKeypoints->undistort(keypoints, undistortedKeypoints);
+		SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
 
         LOG_DEBUG("=> Localization");
 
@@ -282,7 +280,7 @@ bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &f
 	// feature matching to reference keyframe			
 	std::vector<DescriptorMatch> matches;
 	m_matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
-	m_matchesFilter->filter(matches, matches, candidateKf->getKeypoints(), frame->getKeypoints());
+	m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
 	// find 2D-3D point correspondences
 	if (matches.size() < m_minNbInliers)
 		return false;

@@ -102,3 +102,5 @@ data/data_hololens*
 data/*.avi
 data/fbow_voc
 
+
+data/
