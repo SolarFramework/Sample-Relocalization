@@ -40,8 +40,6 @@ echo "**** Zip bundles"
 "7z.exe" a -tzip bin\%filename%_release.zip installData.bat
 "7z.exe" a -tzip bin\%filename%_debug.zip bin\Debug
 "7z.exe" a -tzip bin\%filename%_release.zip bin\Release
-"7z.exe" a -tzip bin\%filename%_debug.zip data\SolARSample_Relocalization_TUM_conf.xml
-"7z.exe" a -tzip bin\%filename%_release.zip data\SolARSample_Relocalization_TUM_conf.xml
-"7z.exe" a -tzip bin\%filename%_debug.zip data\SolARPipelineTest_Relocalization_TUM_conf.xml
-"7z.exe" a -tzip bin\%filename%_release.zip data\SolARPipelineTest_Relocalization_TUM_conf.xml
+
+"sh.exe" bundleDataConfigFiles.sh windows bin\%filename%_release.zip bin\%filename%_debug.zip
 
