@@ -8,7 +8,7 @@ del fbow_voc.zip
 
 :: Download TUM camera calibration
 echo Download TUM camera calibration
-curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_camera_calibration.yml -L -o data/tum_camera_calibration.yml
+curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_camera_calibration.yml -L -o data/tum_camera_calibration.json
 
 
 :: Download TUM video for testing relocalization
