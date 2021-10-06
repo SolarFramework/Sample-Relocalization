@@ -5,7 +5,7 @@ unzip -o fbow_voc.zip -d ./data/fbow_voc
 rm fbow_voc.zip
 
 # Download TUM camera calibration
-curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_camera_calibration.yml -L -o data/tum_camera_calibration.json
+curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_camera_calibration.json -L -o data/tum_camera_calibration.json
 
 # Download TUM video for testing relocalization
 curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_dataset_freiburg3_long_office_household_relocalization.avi -L -o data/rgbd_dataset_freiburg3_long_office_household_relocalization.avi
