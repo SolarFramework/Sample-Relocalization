@@ -82,7 +82,13 @@ linux {
 
 DISTFILES += \
     SolARServiceTest_Relocalization_conf.xml \
-    packagedependencies.txt
+    packagedependencies.txt \
+    docker/build.sh \
+    docker/launch.bat \
+    docker/launch.sh \
+    docker/launch_vm.sh \
+    docker/SolARServiceRelocalizationClient.dockerfile \
+    docker/start_client.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
 xml_files.files =  SolARServiceTest_Relocalization_conf.xml

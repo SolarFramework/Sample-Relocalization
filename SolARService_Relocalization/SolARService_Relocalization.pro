@@ -39,7 +39,7 @@ HEADERS += \
 
 SOURCES += \
     GrpcServerManager.cpp\
-    SolARPipeline_Relocalization_Remote.cpp
+    SolARService_Relocalization.cpp
 
 unix {
     LIBS += -ldl
@@ -78,7 +78,13 @@ DISTFILES += \
     SolARService_Relocalization_modules.xml \
     SolARService_Relocalization_properties.xml \
     packagedependencies.txt \
-    start_relocalization_service.sh
+    start_relocalization_service.sh \
+    docker/build.sh \
+    docker/launch.bat \
+    docker/launch.sh \
+    docker/relocalization-service-manifest.yaml \
+    docker/SolARServiceRelocalization.dockerfile \
+    docker/start_server.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
 xml_files.files =  SolARService_Relocalization_modules.xml \
