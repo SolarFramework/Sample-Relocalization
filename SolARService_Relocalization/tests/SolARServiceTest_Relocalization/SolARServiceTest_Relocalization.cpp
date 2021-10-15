@@ -73,8 +73,8 @@ int main(int argc, char* argv[])
     // Signal interruption function (Ctrl + C)
     signal(SIGINT, SigInt);
 
-    cxxopts::Options option_list("SolARPipelineTest_Relocalization_Remote",
-                                 "SolARPipelineTest_Relocalization_Remote - The commandline interface to the xpcf grpc client test application.\n");
+    cxxopts::Options option_list("SolARServiceTest_Relocalization",
+                                 "SolARServiceTest_Relocalization - The commandline interface to the xpcf grpc client test application.\n");
     option_list.add_options()
             ("h,help", "display this help and exit")
             ("v,version", "display version information and exit")
@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     }
     else if (options.count("version"))
     {
-        cout << "SolARPipelineTest_Relocalization_Remote version 0.9.3 \n";
+        cout << "SolARServiceTest_Relocalization version 0.9.3 \n";
         cout << '\n';
         return 0;
     }
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         SRef<xpcf::IComponentManager> componentMgr = xpcf::getComponentManagerInstance();
 
         string file = options["file"].as<string>();
-        LOG_INFO("Load Client Remote Relocalization Pipeline configuration file: {}", file);
+        LOG_INFO("Load Client Remote Relocalization Service configuration file: {}", file);
 
         if (componentMgr->load(file.c_str()) == org::bcom::xpcf::_SUCCESS)
         {
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
                 // Connect remotely to the HoloLens streaming app
                 if (arDevice->start() == FrameworkReturnCode::_SUCCESS) {
 
-                    LOG_INFO("Set relocalization pipeline camera parameters");
+                    LOG_INFO("Set relocalization service camera parameters");
 
                     // Load camera intrinsics parameters
                     CameraRigParameters camRigParams = arDevice->getCameraParameters();

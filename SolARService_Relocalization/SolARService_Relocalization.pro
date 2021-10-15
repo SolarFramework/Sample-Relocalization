@@ -1,5 +1,5 @@
 ## global defintions : target lib name, version
-TARGET = SolARPipeline_Relocalization_Remote
+TARGET = SolARService_Relocalization
 VERSION=0.10.0
 
 ## remove Qt dependencies
@@ -75,14 +75,14 @@ win32 {
 }
 
 DISTFILES += \
-    SolARPipeline_Relocalization_Remote_modules.xml \
-    SolARPipeline_Relocalization_Remote_properties.xml \
+    SolARService_Relocalization_modules.xml \
+    SolARService_Relocalization_properties.xml \
     packagedependencies.txt \
     start_relocalization_service.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
-xml_files.files =  SolARPipeline_Relocalization_Remote_modules.xml \
-                   SolARPipeline_Relocalization_Remote_properties.xml
+xml_files.files =  SolARService_Relocalization_modules.xml \
+                   SolARService_Relocalization_properties.xml
 
 INSTALLS += xml_files
 

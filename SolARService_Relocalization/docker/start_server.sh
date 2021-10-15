@@ -13,12 +13,12 @@ fi
 
 echo "Try to replace the MapUpdate Service URL in the XML configuration file..."
 
-sed -i -e "s/MAPUPDATE_SERVICE_URL/$MAPUPDATE_SERVICE_URL/g" /.xpcf/SolARPipeline_Relocalization_Remote_properties.xml
+sed -i -e "s/MAPUPDATE_SERVICE_URL/$MAPUPDATE_SERVICE_URL/g" /.xpcf/SolARService_Relocalization_properties.xml
 
 echo "XML configuration file ready"
 
-export LD_LIBRARY_PATH=/SolARPipelineRelocalizationRemote:/SolARPipelineRelocalizationRemote/modules/
+export LD_LIBRARY_PATH=/SolARServiceRelocalization:/SolARServiceRelocalization/modules/
 
 ## Start client
-cd /SolARPipelineRelocalizationRemote
-./SolARPipeline_Relocalization_Remote -m /.xpcf/SolARPipeline_Relocalization_Remote_modules.xml -p /.xpcf/SolARPipeline_Relocalization_Remote_properties.xml
+cd /SolARServiceRelocalization
+./SolARService_Relocalization -m /.xpcf/SolARService_Relocalization_modules.xml -p /.xpcf/SolARService_Relocalization_properties.xml

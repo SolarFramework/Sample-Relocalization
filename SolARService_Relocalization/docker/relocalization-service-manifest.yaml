@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: relocalization-pipeline
+  name: relocalization-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: relocalization-pipeline
+      app: relocalization-service
   template:
     metadata:
       labels:
-        app: relocalization-pipeline
+        app: relocalization-service
     spec:
       imagePullSecrets:
       - name: regcredsupra
       containers:
-      - name: relocalization-pipeline
+      - name: relocalization-service
         image: solar-docker-local.artifact.b-com.com/relocalization/0.10.0/relocalization-remote:latest
         env:
         - name: XPCF_GRPC_SERVER_LOG_LEVEL
@@ -25,19 +25,19 @@ spec:
         - name: XPCF_GRPC_MAX_SEND_MSG_SIZE
           value: "2000000"
         - name: MAPUPDATE_SERVICE_URL
-          value: map-update-pipeline.artwin.svc.cluster.local:80          
+          value: map-update-service.artwin.svc.cluster.local:80          
 ---
 
 kind: Service
 apiVersion: v1
 metadata:
-  name: relocalization-pipeline
+  name: relocalization-service
   labels:
-    app: relocalization-pipeline
+    app: relocalization-service
 spec:
   type: NodePort
   selector:
-    app: relocalization-pipeline
+    app: relocalization-service
   ports:
   - name: http
     port: 80
@@ -49,22 +49,22 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: relocalization-pipeline
+  name: relocalization-service
 
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: relocalization-pipeline-rolebinding
+  name: relocalization-service-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: relocalization-pipeline
-  namespace: relocalization-pipeline.artwin.b-com.com:q
+  name: relocalization-service
+  namespace: relocalization-service.artwin.b-com.com:q
 
 ---
 
@@ -76,18 +76,18 @@ metadata:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
   name:
-    relocalization-pipeline
+    relocalization-service
 spec:
   tls:
   - hosts:
-      - relocalization-pipeline.artwin.b-com.com
+      - relocalization-service.artwin.b-com.com
   rules:
-  - host: relocalization-pipeline.artwin.b-com.com
+  - host: relocalization-service.artwin.b-com.com
     http:
       paths:
       - backend:
           service:
-            name: relocalization-pipeline
+            name: relocalization-service
             port:
               number: 80
         path: /

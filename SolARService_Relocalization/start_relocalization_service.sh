@@ -10,5 +10,5 @@ export XPCF_GRPC_MAX_SEND_MSG_SIZE=2000000
 ## Log level expected: DEBUG, CRITICAL, ERROR, INFO, TRACE, WARNING
 export SOLAR_LOG_LEVEL=DEBUG
 
-./SolARPipeline_Relocalization_Remote -m SolARPipeline_Relocalization_Remote_modules.xml -p SolARPipeline_Relocalization_Remote_properties.xml
+./SolARService_Relocalization -m SolARService_Relocalization_modules.xml -p SolARService_Relocalization_properties.xml
 
