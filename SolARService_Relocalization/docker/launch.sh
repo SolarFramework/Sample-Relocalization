@@ -17,4 +17,4 @@ export MAPUPDATE_SERVICE_URL=$1
 export SOLAR_LOG_LEVEL=INFO
 
 docker rm -f solarservicerelocalizationremote
-docker run -d -p 50052:8080 -e SOLAR_LOG_LEVEL -e MAPUPDATE_SERVICE_URL -e "SERVICE_NAME=SolARServiceRelocalization" --log-opt max-size=50m -e "SERVICE_TAGS=SolAR" --name solarservicerelocalizationremote artwin/solar/services/relocalization-remote:latest
+docker run -d -p 50052:8080 -e SOLAR_LOG_LEVEL -e MAPUPDATE_SERVICE_URL -e "SERVICE_NAME=SolARServiceRelocalization" --log-opt max-size=50m -e "SERVICE_TAGS=SolAR" --name solarservicerelocalizationremote artwin/solar/services/relocalization-service:latest
