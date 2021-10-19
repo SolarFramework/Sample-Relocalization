@@ -23,7 +23,7 @@ ADD modules/* /SolARServiceRelocalization/modules/
 ADD SolARService_Relocalization /SolARServiceRelocalization/
 RUN chmod +x /SolARServiceRelocalization/SolARService_Relocalization
 RUN mkdir .xpcf
-ADD *.xml /.xpcf
+ADD *.xml /.xpcf/
 ADD docker/start_server.sh .
 RUN chmod +x start_server.sh
 
