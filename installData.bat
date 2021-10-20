@@ -10,7 +10,6 @@ del fbow_voc.zip
 echo Download TUM camera calibration
 curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_camera_calibration.json -L -o data/tum_camera_calibration.json
 
-
 :: Download TUM video for testing relocalization
 echo Download TUM video for testing relocalization
 curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_dataset_freiburg3_long_office_household_relocalization.avi -L -o data/rgbd_dataset_freiburg3_long_office_household_relocalization.avi
@@ -21,3 +20,15 @@ curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_offi
 echo Unzip Map
 powershell Expand-Archive map.zip -DestinationPath .\data -F
 del map.zip
+
+:: Download AR device captures
+echo Download and install AR device captures
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/bcomLab/loopDesktopA.zip -L -o loopDesktopA.zip
+powershell Expand-Archive loopDesktopA.zip -DestinationPath .\data\data_hololens -F
+del loopDesktopA.zip
+
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/bcomLab/loopDesktopB.zip -L -o loopDesktopB.zip
+powershell Expand-Archive loopDesktopB.zip -DestinationPath .\data\data_hololens -F
+del loopDesktopB.zip
+
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/hololens_calibration.json -L -o .\data\data_hololens\hololens_calibration.json
