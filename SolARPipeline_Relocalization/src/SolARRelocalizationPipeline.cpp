@@ -252,7 +252,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 for (const auto& it : inliers)
                     pts2DInliers.push_back(pts2D[it]);
 
-                LOG_DEBUG("Got the new pose");
+                LOG_INFO("Got the new pose: relocalization successful");
                 return FrameworkReturnCode::_SUCCESS;
             }
             else {
