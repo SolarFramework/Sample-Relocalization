@@ -14,6 +14,14 @@ curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/tum_c
 echo Download TUM video for testing relocalization
 curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_dataset_freiburg3_long_office_household_relocalization.avi -L -o data/rgbd_dataset_freiburg3_long_office_household_relocalization.avi
 
+:: Download AR device captures for testing relocalization service
+echo Download and install AR device captures
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/bcomLab/loopDesktopA.zip -L -o loopDesktopA.zip
+powershell Expand-Archive loopDesktopA.zip -DestinationPath .\data\data_hololens -F
+del loopDesktopA.zip
+
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/hololens_calibration.json -L -o .\data\data_hololens\hololens_calibration.json
+
 :: Download TUM map for testing relocalization
 echo Download TUM map for testing relocalization
 curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_win_0_10_0.zip -L -o map.zip
