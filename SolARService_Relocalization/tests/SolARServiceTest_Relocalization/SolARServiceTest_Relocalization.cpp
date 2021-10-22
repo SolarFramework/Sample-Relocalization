@@ -28,7 +28,7 @@ using namespace SolAR::datastructure;
 namespace xpcf=org::bcom::xpcf;
 
 // Nb images between 2 pipeline requests
-#define NB_IMAGES_BETWEEN_REQUESTS 10
+#define NB_IMAGES_BETWEEN_REQUESTS 50
 
 #define INDEX_USE_CAMERA 0
 
@@ -73,8 +73,8 @@ int main(int argc, char* argv[])
     // Signal interruption function (Ctrl + C)
     signal(SIGINT, SigInt);
 
-    cxxopts::Options option_list("SolARPipelineTest_Relocalization_Remote",
-                                 "SolARPipelineTest_Relocalization_Remote - The commandline interface to the xpcf grpc client test application.\n");
+    cxxopts::Options option_list("SolARServiceTest_Relocalization",
+                                 "SolARServiceTest_Relocalization - The commandline interface to the xpcf grpc client test application.\n");
     option_list.add_options()
             ("h,help", "display this help and exit")
             ("v,version", "display version information and exit")
@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     }
     else if (options.count("version"))
     {
-        cout << "SolARPipelineTest_Relocalization_Remote version 0.9.3 \n";
+        cout << "SolARServiceTest_Relocalization version 0.9.3 \n";
         cout << '\n';
         return 0;
     }
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         SRef<xpcf::IComponentManager> componentMgr = xpcf::getComponentManagerInstance();
 
         string file = options["file"].as<string>();
-        LOG_INFO("Load Client Remote Relocalization Pipeline configuration file: {}", file);
+        LOG_INFO("Load Client Remote Relocalization Service configuration file: {}", file);
 
         if (componentMgr->load(file.c_str()) == org::bcom::xpcf::_SUCCESS)
         {
@@ -114,21 +114,11 @@ int main(int argc, char* argv[])
                 LOG_INFO("Resolve components used");
                 auto arDevice = componentMgr->resolve<input::devices::IARDevice>();
                 auto imageViewerResult = componentMgr->resolve<display::IImageViewer>();
-                auto viewer3D = componentMgr->resolve<display::I3DPointsViewer>();
-                auto mapperManager = componentMgr->resolve<storage::IMapManager>();
-                auto pointCloudManager = componentMgr->resolve<storage::IPointCloudManager>();
-
-                // Load map from file
-                if (mapperManager->loadFromFile() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_INFO("Load map failed!");
-
-                    return -1;
-                }
 
                 // Connect remotely to the HoloLens streaming app
                 if (arDevice->start() == FrameworkReturnCode::_SUCCESS) {
 
-                    LOG_INFO("Set relocalization pipeline camera parameters");
+                    LOG_INFO("Set relocalization service camera parameters");
 
                     // Load camera intrinsics parameters
                     CameraRigParameters camRigParams = arDevice->getCameraParameters();
@@ -145,10 +135,7 @@ int main(int argc, char* argv[])
 
                             LOG_INFO("\n\n***** Control+C to stop *****\n");
 
-                            // get point cloud to display
-                            pointCloudManager->getAllPoints(pointCloud);
-
-                            unsigned int nb_images = 0;
+                            unsigned int nb_images = NB_IMAGES_BETWEEN_REQUESTS;
 
                             // Wait for interruption
                             while (true) {
@@ -176,15 +163,10 @@ int main(int argc, char* argv[])
 
                                         if (gRelocalizationPipeline->relocalizeProcessRequest(image, pose, confidence) == FrameworkReturnCode::_SUCCESS) {
                                             LOG_INFO("New pose calculated by relocalization pipeline");
-                                            framePoses.push_back(pose);
+//                                            framePoses.push_back(pose);
                                         }
                                         else {
                                             LOG_INFO("Failed to calculate pose for this image");
-                                        }
-
-                                        if (viewer3D->display(pointCloud, pose, {}, framePoses) == FrameworkReturnCode::_STOP){
-                                            LOG_INFO("Cannot display result");
-                                            return -1;
                                         }
                                     }
 

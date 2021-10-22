@@ -14,3 +14,16 @@ curl https://artifact.b-com.com/solar-generic-local/captures/singleRGB/TUM/rgbd_
 curl https://artifact.b-com.com/solar-generic-local/maps/TUM/freiburg3_long_office_household/map_linux_0_10_0.zip -L -o map.zip
 unzip -o map.zip -d ./data
 rm map.zip
+
+# Download AR device captures
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/bcomLab/loopDesktopA.zip -L -o loopDesktopA.zip
+unzip -o loopDesktopA.zip -d ./data/data_hololens
+rm loopDesktopA.zip
+
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/bcomLab/loopDesktopB.zip -L -o loopDesktopB.zip
+unzip -o loopDesktopB.zip -d ./data/data_hololens
+rm loopDesktopB.zip
+
+# Download calibration file
+echo Download calibration file
+curl https://artifact.b-com.com/solar-generic-local/captures/hololens/hololens_calibration.json -L -o ./data/data_hololens/hololens_calibration.json

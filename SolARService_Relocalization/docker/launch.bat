@@ -15,7 +15,7 @@ REM Set application log level
 REM Log level expected: DEBUG, CRITICAL, ERROR, INFO, TRACE, WARNING
 SET SOLAR_LOG_LEVEL=INFO
 
-docker rm -f solarpipelinerelocalizationremote
-docker run -d -p 50052:8080 -e SOLAR_LOG_LEVEL -e MAPUPDATE_SERVICE_URL -e "SERVICE_NAME=SolARPipelineRelocalizationRemote" --log-opt max-size=50m -e "SERVICE_TAGS=SolAR" --name solarpipelinerelocalizationremote artwin/solar/pipeline/relocalization-remote:latest
+docker rm -f solarservicerelocalization
+docker run -d -p 50052:8080 -e SOLAR_LOG_LEVEL -e MAPUPDATE_SERVICE_URL -e "SERVICE_NAME=SolARServiceRelocalization" --log-opt max-size=50m -e "SERVICE_TAGS=SolAR" --name solarservicerelocalization artwin/solar/services/relocalization-service:latest
 
 :end

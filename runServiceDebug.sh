@@ -3,7 +3,7 @@
 # Test number of parameters
 if [[ $# -ne 3 ]]; then
 	echo "Invalid parameters!"
-	echo "Correct syntaxe is: runRemoteDebug.sh RemoteServerName -f configuration_file.xml"
+	echo "Correct syntaxe is: runServiceDebug.sh RemoteServerName -f configuration_file.xml"
 	exit
 fi
 

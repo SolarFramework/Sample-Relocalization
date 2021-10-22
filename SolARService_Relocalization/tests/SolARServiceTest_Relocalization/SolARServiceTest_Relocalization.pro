@@ -1,5 +1,5 @@
 ## global defintions : target lib name, version
-TARGET = SolARPipelineTest_Relocalization_Remote
+TARGET = SolARServiceTest_Relocalization
 VERSION=0.10.0
 
 CONFIG += c++1z
@@ -36,7 +36,7 @@ PROJECTCONFIG = QTVS
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/templateappconfig.pri)))  # Shell_quote & shell_path required for visual on windows
 
 SOURCES += \
-    SolARPipelineTest_Relocalization_Remote.cpp
+    SolARServiceTest_Relocalization.cpp
 
 unix {
     LIBS += -ldl
@@ -81,11 +81,17 @@ linux {
 }
 
 DISTFILES += \
-    SolARPipelineTest_Relocalization_Remote_conf.xml \
-    packagedependencies.txt
+    SolARServiceTest_Relocalization_conf.xml \
+    packagedependencies.txt \
+    docker/build.sh \
+    docker/launch.bat \
+    docker/launch.sh \
+    docker/launch_vm.sh \
+    docker/SolARServiceRelocalizationClient.dockerfile \
+    docker/start_client.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
-xml_files.files =  SolARPipelineTest_Relocalization_Remote_conf.xml
+xml_files.files =  SolARServiceTest_Relocalization_conf.xml
 
 INSTALLS += xml_files
 

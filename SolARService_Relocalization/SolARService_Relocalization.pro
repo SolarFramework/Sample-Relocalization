@@ -1,8 +1,12 @@
 ## global defintions : target lib name, version
-TARGET = SolARPipeline_Relocalization_Remote
+TARGET = SolARService_Relocalization
 VERSION=0.10.0
 
+QMAKE_PROJECT_DEPTH = 0
+
 ## remove Qt dependencies
+QT     -= core gui
+CONFIG -= app_bundle qt
 CONFIG += c++1z
 CONFIG += console
 CONFIG += verbose
@@ -21,6 +25,7 @@ CONFIG(debug,debug|release) {
 
 CONFIG(release,debug|release) {
     TARGETDEPLOYDIR = $${PWD}/../bin/Release
+    DEFINES += _NDEBUG=1
     DEFINES += NDEBUG=1
 }
 
@@ -39,7 +44,7 @@ HEADERS += \
 
 SOURCES += \
     GrpcServerManager.cpp\
-    SolARPipeline_Relocalization_Remote.cpp
+    SolARService_Relocalization.cpp
 
 unix {
     LIBS += -ldl
@@ -49,7 +54,6 @@ unix {
 linux {
     LIBS += -ldl
     LIBS += -L/home/linuxbrew/.linuxbrew/lib # temporary fix caused by grpc with -lre2 ... without -L in grpc.pc
-    INCLUDEPATH += /home/christophe/Dev/xpcf/libs/cppast/external/cxxopts/include
 }
 
 
@@ -74,15 +78,34 @@ win32 {
     INCLUDEPATH += $$(WINDOWSSDKDIR)lib/winv6.3/um/x64
 }
 
+linux {
+    run_install.path = $${TARGETDEPLOYDIR}
+    run_install.files = $${PWD}/start_relocalization_service.sh
+    CONFIG(release,debug|release) {
+        run_install.extra = cp $$files($${PWD}/start_relocalization_service_release.sh) $${PWD}/start_relocalization_service.sh
+    }
+    CONFIG(debug,debug|release) {
+        run_install.extra = cp $$files($${PWD}/start_relocalization_service_debug.sh) $${PWD}/start_relocalization_service.sh
+    }
+    INSTALLS += run_install
+}
+
 DISTFILES += \
-    SolARPipeline_Relocalization_Remote_modules.xml \
-    SolARPipeline_Relocalization_Remote_properties.xml \
+    SolARService_Relocalization_modules.xml \
+    SolARService_Relocalization_properties.xml \
     packagedependencies.txt \
-    start_relocalization_service.sh
+    docker/build.sh \
+    docker/launch.bat \
+    docker/launch.sh \
+    docker/relocalization-service-manifest.yaml \
+    docker/SolARServiceRelocalization.dockerfile \
+    docker/start_server.sh \
+    start_relocalization_service_debug.sh \
+    start_relocalization_service_release.sh
 
 xml_files.path = $${TARGETDEPLOYDIR}
-xml_files.files =  SolARPipeline_Relocalization_Remote_modules.xml \
-                   SolARPipeline_Relocalization_Remote_properties.xml
+xml_files.files =  SolARService_Relocalization_modules.xml \
+                   SolARService_Relocalization_properties.xml
 
 INSTALLS += xml_files
 
