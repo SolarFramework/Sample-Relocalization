@@ -29,6 +29,8 @@ namespace xpcf=org::bcom::xpcf;
 
 // Nb images between 2 pipeline requests
 #define NB_IMAGES_BETWEEN_REQUESTS 50
+// Nb images sent (to limit test duration)
+#define NB_IMAGES_SENT 20
 
 #define INDEX_USE_CAMERA 0
 
@@ -109,6 +111,7 @@ int main(int argc, char* argv[])
             LOG_INFO("Resolve IRelocalizationPipeline interface");
             gRelocalizationPipeline = componentMgr->resolve<SolAR::api::pipeline::IRelocalizationPipeline>();
 
+            LOG_INFO("Initialize IRelocalizationPipeline interface...");
             if (gRelocalizationPipeline->init() == FrameworkReturnCode::_SUCCESS )
             {
                 LOG_INFO("Resolve components used");
@@ -136,6 +139,7 @@ int main(int argc, char* argv[])
                             LOG_INFO("\n\n***** Control+C to stop *****\n");
 
                             unsigned int nb_images = NB_IMAGES_BETWEEN_REQUESTS;
+                            unsigned int nb_images_sent = 0;
 
                             // Wait for interruption
                             while (true) {
@@ -158,6 +162,7 @@ int main(int argc, char* argv[])
 
                                     if (nb_images == NB_IMAGES_BETWEEN_REQUESTS) {
                                         nb_images = 0;
+                                        nb_images_sent ++;
 
                                         LOG_INFO("Send an image to relocalization pipeline");
 
@@ -167,6 +172,12 @@ int main(int argc, char* argv[])
                                         }
                                         else {
                                             LOG_INFO("Failed to calculate pose for this image");
+                                        }
+
+                                        if (nb_images_sent == NB_IMAGES_SENT) {
+                                            LOG_INFO ("{} images sent, end of test", NB_IMAGES_SENT);
+
+                                            exit(0);
                                         }
                                     }
 
