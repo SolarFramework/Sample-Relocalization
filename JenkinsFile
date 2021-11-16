@@ -11,9 +11,24 @@ node("master") {
     SolArModulePipeline {
         moduleName="SolARSample_Relocalization"
         dirName="SolARBuild"
-        buildDir="SolARSample_Relocalization_Mono,SolARSample_Relocalization_Multi,SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
+        buildDir=\
+        "SolARSample_Relocalization_Mono,\
+         SolARSample_Relocalization_Multi,\
+         SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
         makeTarget="install install_deps"
         android=false
+        packageScripts="bundleSamples"
+    }
+
+    SolArModulePipeline {
+        moduleName="SolARSample_Relocalization_Service"
+        dirName="SolARBuild"
+        buildDir=\
+        "SolARService_Relocalization,\
+         SolARService_Relocalization/tests/SolARServiceTest_Relocalization"
+        makeTarget="install install_deps"
+        android=false
+        win=false
         packageScripts="bundleSamples"
     }
 }
