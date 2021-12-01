@@ -20,15 +20,4 @@ node("master") {
         packageScripts="bundleSamples"
     }
 
-    SolArModulePipeline {
-        moduleName="SolARSample_Relocalization_Service"
-        dirName="SolARBuild"
-        buildDir=\
-        "SolARService_Relocalization,\
-         SolARService_Relocalization/tests/SolARServiceTest_Relocalization"
-        makeTarget="install install_deps"
-        android=false
-        win=false
-        packageScripts="bundleSamples"
-    }
 }
