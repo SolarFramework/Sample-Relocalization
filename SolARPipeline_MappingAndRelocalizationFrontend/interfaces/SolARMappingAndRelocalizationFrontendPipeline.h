@@ -34,6 +34,8 @@
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/pipeline/IMappingPipeline.h"
+#include "api/input/files/ITrackableLoader.h"
+#include "api/solver/pose/ITrackablePose.h"
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
@@ -128,17 +130,27 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief send requests to the relocalization service
     void processRelocalization();
 
+    /// @brief relocalization based on markers
+    void processRelocalizationMarker();
+
   private:
 
     // Relocalization and mapping services
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
+    // Trackable objects management
+    SRef<api::input::files::ITrackableLoader>       m_trackableLoader;
+    SRef<api::solver::pose::ITrackablePose>         m_trackablePose;
+
+
 
     // Delegate task dedicated to relocalization processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
+    xpcf::DelegateTask * m_relocalizationMarkerTask = nullptr;
 
     // Drop buffer used by the relocalization task
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalization;
+    xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalizationMarker;
 
     // 3D transformation matrix from client to SolAR coordinates system
     Transform3Df m_T_M_W = Transform3Df::Identity();

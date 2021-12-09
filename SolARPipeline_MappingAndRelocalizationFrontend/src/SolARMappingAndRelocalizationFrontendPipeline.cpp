@@ -39,6 +39,8 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         LOG_DEBUG("Components injection declaration");
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, true);
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
+        declareInjectable<api::input::files::ITrackableLoader>(m_trackableLoader, true);
+        declareInjectable<api::solver::pose::ITrackablePose>(m_trackablePose, true);
 
         LOG_DEBUG("All component injections declared");
 
@@ -51,6 +53,15 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
             };
 
             m_relocalizationTask = new xpcf::DelegateTask(fnRelocalizationProcessing);
+        }
+
+        // Relocalization Marker processing function
+        if (m_relocalizationMarkerTask == nullptr) {
+            auto fnRelocalizationMarkerProcessing = [&]() {
+                processRelocalizationMarker();
+            };
+
+            m_relocalizationMarkerTask = new xpcf::DelegateTask(fnRelocalizationMarkerProcessing);
         }
     }
     catch (xpcf::Exception & e) {
@@ -72,6 +83,7 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline destructor")
 
     delete m_relocalizationTask;
+    delete m_relocalizationMarkerTask;
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
@@ -128,6 +140,31 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_ERROR_;
     }
 
+    if ((m_trackableLoader != nullptr) && (m_trackablePose != nullptr)) {
+
+        LOG_DEBUG("Load and set Trackable object");
+
+        SRef<Trackable> trackable;
+
+        if (m_trackableLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+        {
+            LOG_ERROR("Cannot load trackable object");
+            return FrameworkReturnCode::_ERROR_;
+        }
+        else
+        {
+            if (m_trackablePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+            {
+                LOG_ERROR("Cannot set trackable object to trackable pose estimator");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+    }
+    else {
+        LOG_ERROR("Trackable loader and pose instance not created");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
     return FrameworkReturnCode::_SUCCESS;
 }
 
@@ -170,6 +207,17 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     }
     else {
         LOG_ERROR("Mapping service instance not created");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (m_trackablePose != nullptr) {
+
+        LOG_DEBUG("Set camera parameters for the trackable pose");
+
+        m_trackablePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
+    }
+    else {
+        LOG_ERROR("Trackable pose instance not created");
         return FrameworkReturnCode::_ERROR_;
     }
 
@@ -246,6 +294,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
 
     LOG_DEBUG("Start relocalization task");
     m_relocalizationTask->start();
+    m_relocalizationMarkerTask->start();
 
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -257,6 +306,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
     LOG_DEBUG("Stop relocalization task");
     m_dropBufferRelocalization.empty();
     m_relocalizationTask->stop();
+    m_relocalizationMarkerTask->stop();
 
     if (m_relocalizationService != nullptr){
 
@@ -319,6 +369,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         LOG_DEBUG("Push image and pose for relocalization task");
 
         m_dropBufferRelocalization.push(std::make_pair(image, pose));
+        m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
         m_nb_relocalization_images = 0;
     }
@@ -337,13 +388,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             m_T_M_W_status = PREVIOUS_3DTRANSFORM;
         }
     }
-/***** temporaire ****/
-    else {
-        LOG_DEBUG("Send image and pose to mapping service");
-        m_mappingService->mappingProcessRequest(image, m_T_M_W * pose);
-    }
-/***** temporaire ****/
-
 
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -395,6 +439,34 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     else
     {
         LOG_DEBUG("Relocalization failed");
+    }
+}
+
+void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker()
+{
+    std::pair<SRef<Image>, Transform3Df> imagePose;
+
+    if (!m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
+        xpcf::DelegateTask::yield();
+        return;
+    }
+
+    SRef<Image> image = imagePose.first;
+    Transform3Df pose = imagePose.second;
+    Transform3Df new_pose;
+
+    LOG_DEBUG("Relocalization marker processing");
+
+    if (m_trackablePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
+
+        LOG_INFO("=> Relocalization marker succeeded");
+        LOG_INFO("Hololens pose: \n{}", pose.matrix());
+        LOG_INFO("World pose: \n{}", new_pose.matrix());
+
+        m_T_M_W = new_pose * pose.inverse();
+        m_T_M_W_status = NEW_3DTRANSFORM;
+
+        LOG_INFO("Transformation matrix from Hololens to World: \n{}", m_T_M_W.matrix());
     }
 }
 
