@@ -41,12 +41,12 @@
 
 	<properties>
             <!-- gRPC proxy configuration-->
-            <configure component="110a089c-0bb1-488e-b24b-c1b96bc9df3b">
+            <configure component="IMappingPipeline_grpcProxy">
                 <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50051"/>
                 <!--property name="channelUrl" access="rw" type="string" value="10.50.1.152:31890"/-->
                 <property name="channelCredentials" access="rw" type="uint" value="0"/>
             </configure>
-            <configure component="597d510d-452a-4da2-9c3a-8d4b8d15c584">
+            <configure component="IRelocalizationPipeline_grpcProxy">
                     <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50052"/>
                     <!--property name="channelUrl" access="rw" type="string" value="10.50.1.152:31889"/-->
                     <property name="channelCredentials" access="rw" type="uint" value="0"/>
