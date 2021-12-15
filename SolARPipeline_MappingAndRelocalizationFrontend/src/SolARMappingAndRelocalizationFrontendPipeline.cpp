@@ -27,7 +27,7 @@ namespace PIPELINES {
 namespace RELOCALIZATION {
 
 // Set the number of images between to requests to the relocalization service
-#define NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS 10
+#define NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS 5
 
 // Public methods
 
@@ -63,6 +63,15 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
 
             m_relocalizationMarkerTask = new xpcf::DelegateTask(fnRelocalizationMarkerProcessing);
         }
+
+        // Mapping processing function
+        if (m_mappingTask == nullptr) {
+            auto fnMappingProcessing = [&]() {
+                processMapping();
+            };
+
+            m_mappingTask = new xpcf::DelegateTask(fnMappingProcessing);
+        }
     }
     catch (xpcf::Exception & e) {
         LOG_ERROR("The following exception has been caught {}", e.what());
@@ -84,6 +93,7 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
 
     delete m_relocalizationTask;
     delete m_relocalizationMarkerTask;
+    delete m_mappingTask;
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
@@ -93,7 +103,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     // Initialize class members
     m_T_M_W = Transform3Df::Identity();
     m_T_M_W_status = NO_3DTRANSFORM;
-    m_confidence = 0;
+    m_confidence = 1;
     m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
 
     if (m_relocalizationService != nullptr){
@@ -295,6 +305,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
     LOG_DEBUG("Start relocalization task");
     m_relocalizationTask->start();
     m_relocalizationMarkerTask->start();
+    m_mappingTask->start();
 
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -305,6 +316,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
 
     LOG_DEBUG("Stop relocalization task");
     m_dropBufferRelocalization.empty();
+    m_dropBufferMapping.empty();
+    m_mappingService->stop();
     m_relocalizationTask->stop();
     m_relocalizationMarkerTask->stop();
 
@@ -368,7 +381,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
         LOG_DEBUG("Push image and pose for relocalization task");
 
-        m_dropBufferRelocalization.push(std::make_pair(image, pose));
+        if (m_T_M_W_status != NO_3DTRANSFORM)
+            m_dropBufferRelocalization.push(std::make_pair(image, pose));
+
         m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
         m_nb_relocalization_images = 0;
@@ -379,8 +394,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
     // Send image and pose to mapping service (if 3D transformation matrix is available)
     if (m_T_M_W_status != NO_3DTRANSFORM) {
 
-        LOG_DEBUG("Send image and pose to mapping service");
-        m_mappingService->mappingProcessRequest(image, m_T_M_W * pose);
+        LOG_DEBUG("Push image and pose for mapping task");
+        m_dropBufferMapping.push(std::make_pair(image, pose));
 
         // Update 3D transformation matrix status
         if (m_T_M_W_status == NEW_3DTRANSFORM) {
@@ -418,6 +433,9 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 
     SRef<Image> image = imagePose.first;
     Transform3Df pose = imagePose.second;
+
+    // No image encoding to send to relocalization service
+    image->setImageEncoding(Image::ENCODING_NONE);
 
     LOG_DEBUG("Send image and pose to relocalization service");
 
@@ -466,7 +484,32 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
         m_T_M_W = new_pose * pose.inverse();
         m_T_M_W_status = NEW_3DTRANSFORM;
 
+        // To force a relocalization request
+        m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
+
         LOG_INFO("Transformation matrix from Hololens to World: \n{}", m_T_M_W.matrix());
+    }
+}
+
+void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
+{
+    std::pair<SRef<Image>, Transform3Df> imagePose;
+
+    if (!m_dropBufferMapping.tryPop(imagePose)) {
+        xpcf::DelegateTask::yield();
+        return;
+    }
+
+    SRef<Image> image = imagePose.first;
+    Transform3Df pose = imagePose.second;
+
+    // No image encoding to send to mapping service
+    image->setImageEncoding(Image::ENCODING_NONE);
+
+    LOG_DEBUG("Send image and pose to mapping service");
+
+    if (m_mappingService->mappingProcessRequest(image, m_T_M_W * pose) != SolAR::FrameworkReturnCode::_SUCCESS) {
+        LOG_DEBUG("Mapping processing request failed");
     }
 }
 

@@ -133,6 +133,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief relocalization based on markers
     void processRelocalizationMarker();
 
+    /// @brief send requests to the mapping service
+    void processMapping();
+
   private:
 
     // Relocalization and mapping services
@@ -147,10 +150,12 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     // Delegate task dedicated to relocalization processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
     xpcf::DelegateTask * m_relocalizationMarkerTask = nullptr;
+    xpcf::DelegateTask * m_mappingTask = nullptr;
 
     // Drop buffer used by the relocalization task
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalization;
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalizationMarker;
+    xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
     Transform3Df m_T_M_W = Transform3Df::Identity();
