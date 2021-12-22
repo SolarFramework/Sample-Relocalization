@@ -106,6 +106,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     m_confidence = 1;
     m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
 
+    m_dropBufferRelocalization.clear();
+    m_dropBufferRelocalizationMarker.clear();
+    m_dropBufferMapping.clear();
+
     if (m_relocalizationService != nullptr){
 
         LOG_DEBUG("Relocalization service URL = {}",
@@ -302,10 +306,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         return FrameworkReturnCode::_ERROR_;
     }
 
-    LOG_DEBUG("Start relocalization task");
-    m_relocalizationTask->start();
-    m_relocalizationMarkerTask->start();
-    m_mappingTask->start();
+    if (!m_tasksStarted) {
+        LOG_DEBUG("Start relocalization task");
+        m_relocalizationTask->start();
+        m_relocalizationMarkerTask->start();
+
+        LOG_DEBUG("Start mapping task");
+        m_mappingTask->start();
+
+        m_tasksStarted = true;
+    }
 
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -314,12 +324,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::stop");
 
-    LOG_DEBUG("Stop relocalization task");
-    m_dropBufferRelocalization.empty();
-    m_dropBufferMapping.empty();
-    m_mappingService->stop();
-    m_relocalizationTask->stop();
-    m_relocalizationMarkerTask->stop();
+    if (m_tasksStarted) {
+        LOG_DEBUG("Stop relocalization task");
+        m_relocalizationTask->stop();
+        m_relocalizationMarkerTask->stop();
+
+        LOG_DEBUG("Stop mapping task");
+        m_mappingTask->stop();
+
+        m_tasksStarted = false;
+    }
 
     if (m_relocalizationService != nullptr){
 
