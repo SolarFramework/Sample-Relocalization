@@ -6,7 +6,7 @@ QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
 INSTALLSUBDIR = SolARBuild
-TARGET = SolARPipelineRelocalization
+TARGET = SolARPipelineMappingAndRelocalizationFrontend
 FRAMEWORK = $${TARGET}
 VERSION=0.11.0
 
@@ -44,12 +44,21 @@ DEFINES += "_BCOM_SHARED=__declspec(dllexport)"
 
 INCLUDEPATH += interfaces/
 
-include (SolARPipeline_Relocalization.pri)
+SOURCES += \
+    src/SolARMappingAndRelocalizationFrontendPipeline.cpp \
+    src/SolARMappingAndRelocalizationFrontendPipeline_main.cpp
+
+HEADERS += \
+    interfaces/SolARMappingAndRelocalizationFrontendPipeline.h
 
 unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers
 #    QMAKE_LINK=clang++
 #    QMAKE_CXX = clang++
+}
+
+linux {
+    QMAKE_LFLAGS += -ldl
 }
 
 macx {
@@ -61,16 +70,13 @@ macx {
     LIBS += -lstdc++ -lc -lpthread
 }
 
-linux {
-        QMAKE_LFLAGS += -ldl
-        LIBS += -L/home/linuxbrew/.linuxbrew/lib # temporary fix caused by grpc with -lre2 ... without -L in grpc.pc
-}
-
 win32 {
 
     DEFINES += WIN64 UNICODE _UNICODE
     QMAKE_COMPILER_DEFINES += _WIN64
-    QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275 /Od
+    QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275
+    QMAKE_CXXFLAGS_DEBUG += /Od
+    QMAKE_CXXFLAGS_RELEASE += /O2
 }
 
 android {
@@ -89,12 +95,13 @@ INSTALLS += xpcf_xml_files
 OTHER_FILES += \
     packagedependencies.txt
 
+DISTFILES += \
+    ../../../manualincludepath.pri \
+    LICENSE \
+    README.md \
+    bcom-SolARPipelineMapping.pc.in \
+    *.xml
+
 #NOTE : Must be placed at the end of the .pro
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
-
-DISTFILES += \
-    SolARPipeline_Relocalization_conf.xml \
-    bcom-SolARRelocalizationPipeline.pc.in
-
-
 
