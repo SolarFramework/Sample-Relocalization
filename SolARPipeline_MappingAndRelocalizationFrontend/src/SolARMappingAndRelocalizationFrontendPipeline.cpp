@@ -398,7 +398,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         if (m_T_M_W_status != NO_3DTRANSFORM)
             m_dropBufferRelocalization.push(std::make_pair(image, pose));
 
-        m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
+        if (m_T_M_W_status == NO_3DTRANSFORM)
+            m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
         m_nb_relocalization_images = 0;
     }
