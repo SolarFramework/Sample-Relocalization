@@ -84,17 +84,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
                  m_mapUpdatePipeline->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
         try {
-            if (m_mapUpdatePipeline->init() == FrameworkReturnCode::_SUCCESS) {
-
-                m_initOK = true;
-
-                return FrameworkReturnCode::_SUCCESS;
-            }
-            else {
-                LOG_ERROR("Can not initialize remote map update pipeline");
-                return FrameworkReturnCode::_ERROR_;
-            }
-
+            if (m_mapUpdatePipeline->init() != FrameworkReturnCode::_SUCCESS) {
+				LOG_ERROR("Can not initialize remote map update pipeline");
+				return FrameworkReturnCode::_ERROR_;
+            }            
         }  catch (const std::exception &e) {
             LOG_ERROR("Exception raised during remote request to map update pipeline: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
@@ -102,8 +95,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
     }
     else {
         LOG_ERROR("Map Update pipeline not defined");
-        return FrameworkReturnCode::_ERROR_;
     }
+	m_initOK = true;
+	return FrameworkReturnCode::_SUCCESS;
 }
 
 FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const CameraParameters & cameraParams) 
@@ -123,15 +117,18 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
 
     LOG_DEBUG("Set camera parameters for the map update service");
 
-    try {
-        if (m_mapUpdatePipeline->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
-            LOG_ERROR("Error while setting camera parameters for the map update service");
-            return FrameworkReturnCode::_ERROR_;
-        }
-    }  catch (const std::exception &e) {
-        LOG_ERROR("Exception raised during remote request to the map update service: {}", e.what());
-        return FrameworkReturnCode::_ERROR_;
-    }
+	if (m_mapUpdatePipeline != nullptr) {
+		try {
+			if (m_mapUpdatePipeline->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+				LOG_ERROR("Error while setting camera parameters for the map update service");
+				return FrameworkReturnCode::_ERROR_;
+			}
+		}
+		catch (const std::exception &e) {
+			LOG_ERROR("Exception raised during remote request to the map update service: {}", e.what());
+			return FrameworkReturnCode::_ERROR_;
+		}
+	}
 
     m_cameraOK = true;
 
@@ -172,38 +169,49 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (!m_started) {
+    if (!m_started) {     
+		if (m_mapUpdatePipeline) {
+			LOG_DEBUG("Start remote map update pipeline");
+			if (m_mapUpdatePipeline->start() != FrameworkReturnCode::_SUCCESS) {
+				LOG_ERROR("Cannot start Map Update pipeline");
+				return FrameworkReturnCode::_ERROR_;
+			}
 
-        LOG_DEBUG("Start remote map update pipeline");
-
-        if (m_mapUpdatePipeline->start() == FrameworkReturnCode::_SUCCESS) {
-
-            LOG_DEBUG("Get initial map from a remote map update pipeline");
-
-            SRef<Map> map;
-
-            if (m_mapUpdatePipeline->getMapRequest(map) == FrameworkReturnCode::_SUCCESS) {
-                if (map != nullptr) {
-                    LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
-                    m_mapManager->setMap(map);
-                    m_keyframeCollection = map->getConstKeyframeCollection();
-                    LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
-                    LOG_INFO("Get map from remote map update pipeline");
-                }
-                else {
-                    LOG_INFO("Initial map is empty");
-                }
-            }
-            else {
-                LOG_WARNING("Can not get initial map from remote map update pipeline");
-            }
-
-            m_started = true;
-        }
-        else {
-            LOG_ERROR("Cannot start Map Update pipeline");
-            return FrameworkReturnCode::_ERROR_;
-        }
+			LOG_DEBUG("Get initial map from a remote map update pipeline");
+			SRef<Map> map;
+			if (m_mapUpdatePipeline->getMapRequest(map) == FrameworkReturnCode::_SUCCESS) {
+				if (map != nullptr) {
+					LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+					m_mapManager->setMap(map);
+					m_keyframeCollection = map->getConstKeyframeCollection();
+					LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+					LOG_INFO("Get map from remote map update pipeline");
+				}
+				else {
+					LOG_INFO("Initial map is empty");
+				}
+			}
+			else {
+				LOG_WARNING("Can not get initial map from remote map update pipeline");
+			}
+		}
+		else {
+			LOG_DEBUG("Load initial map from local file");
+			// Load map from file
+			if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
+				SRef<Map> map;
+				m_mapManager->getMap(map);
+				LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
+				m_keyframeCollection = map->getConstKeyframeCollection();
+				LOG_DEBUG("NB keyframes = {}", m_keyframeCollection->getNbKeyframes());
+				LOG_DEBUG("Load map done");
+			}
+			else {
+				LOG_ERROR("Cannot load map from local file");
+				return FrameworkReturnCode::_ERROR_;
+			}
+		}
+        m_started = true;        
     }
     else {
         LOG_INFO("Pipeline already started");
@@ -297,7 +305,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 for (const auto& it : inliers)
                     pts2DInliers.push_back(pts2D[it]);
 
-                LOG_INFO("Got the new pose: relocalization successful");
+                LOG_DEBUG("Got the new pose: relocalization successful");
                 return FrameworkReturnCode::_SUCCESS;
             }
             else {
