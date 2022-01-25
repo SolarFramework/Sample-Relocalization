@@ -235,8 +235,12 @@ FrameworkReturnCode SolARRelocalizationPipeline::stop()
     }
 
     if (m_started) {
-        LOG_DEBUG("Stop remote map update pipeline");
-        m_mapUpdatePipeline->stop();
+		if (m_mapUpdatePipeline) {
+			LOG_DEBUG("Stop remote map update pipeline");
+			if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
+				LOG_ERROR("Cannot stop Map Update pipeline");
+			}
+		}
 
         m_started = false;
     }
