@@ -235,14 +235,15 @@ FrameworkReturnCode SolARRelocalizationPipeline::stop()
     }
 
     if (m_started) {
-		if (m_mapUpdatePipeline) {
+
+        m_started = false;
+
+        if (m_mapUpdatePipeline) {
 			LOG_DEBUG("Stop remote map update pipeline");
 			if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
 				LOG_ERROR("Cannot stop Map Update pipeline");
 			}
 		}
-
-        m_started = false;
     }
     else {
         LOG_INFO("Pipeline already stopped");
@@ -255,7 +256,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                                                                           SolAR::datastructure::Transform3Df& pose, float_t & confidence) 
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
+
     confidence = 0;
+
     if (m_started) {
 
         LOG_DEBUG("=> Detection and extraction");
@@ -321,16 +324,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
     else {
         if (!m_initOK) {
             LOG_ERROR("Pipeline has not been initialized");
-            return FrameworkReturnCode::_ERROR_;
         }
         if (!m_cameraOK){
             LOG_ERROR("Camera parameters have not been set");
-            return FrameworkReturnCode::_ERROR_;
         }
         if (!m_started){
             LOG_ERROR("Pipeline has not been started");
-            return FrameworkReturnCode::_ERROR_;
         }
+        return FrameworkReturnCode::_ERROR_;
     }
 
     return FrameworkReturnCode::_ERROR_;
