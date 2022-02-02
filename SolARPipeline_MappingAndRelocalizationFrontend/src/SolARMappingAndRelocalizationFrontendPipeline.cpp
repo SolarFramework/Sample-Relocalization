@@ -544,7 +544,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     float confidence;
 
     if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_DEBUG("Relocalization succeeded");
+        LOG_INFO("Relocalization succeeded");
 
         LOG_DEBUG("Client original pose: {}", pose.matrix());
         LOG_DEBUG("SolAR new pose: {}", new_pose.matrix());
@@ -553,7 +553,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         m_T_M_W = new_pose * pose.inverse();
         m_T_M_W_status = NEW_3DTRANSFORM;
 
-        LOG_DEBUG("Transformation matrix from client to SolAR: {}", m_T_M_W.matrix());
+        LOG_INFO("Transformation matrix from client to SolAR:\n{}", m_T_M_W.matrix());
     }
     else
     {
