@@ -511,7 +511,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if (!m_dropBufferRelocalization.tryPop(imagePose)) {
+    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
@@ -528,16 +528,16 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     float confidence;
 
     if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_DEBUG("Relocalization succeeded");
+        LOG_INFO("Relocalization succeeded");
 
-        LOG_DEBUG("Client original pose: {}", pose.matrix());
-        LOG_DEBUG("SolAR new pose: {}", new_pose.matrix());
+        LOG_INFO("Client original pose: {}", pose.matrix());
+        LOG_INFO("SolAR new pose: {}", new_pose.matrix());
 
         // Calculate new 3D transformation matrix
         m_T_M_W = new_pose * pose.inverse();
         m_T_M_W_status = NEW_3DTRANSFORM;
 
-        LOG_DEBUG("Transformation matrix from client to SolAR: {}", m_T_M_W.matrix());
+        LOG_INFO("Transformation matrix from client to SolAR: \n{}", m_T_M_W.matrix());
     }
     else
     {
@@ -549,7 +549,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if (!m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
+    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
