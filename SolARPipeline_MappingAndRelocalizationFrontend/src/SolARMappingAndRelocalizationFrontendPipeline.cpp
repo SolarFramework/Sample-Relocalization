@@ -527,7 +527,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if (!m_dropBufferRelocalization.tryPop(imagePose)) {
+    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
@@ -565,7 +565,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if (!m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
+    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
