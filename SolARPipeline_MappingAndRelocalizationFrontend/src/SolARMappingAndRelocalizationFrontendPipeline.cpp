@@ -384,6 +384,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
 
     if (m_started) {
 
+        m_started = false;
+
         if (m_tasksStarted) {
             LOG_DEBUG("Stop relocalization task");
             m_relocalizationTask->stop();
@@ -432,8 +434,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
             LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
-
-        m_started = false;
     }
     else {
         LOG_INFO("Pipeline already stopped");
@@ -452,41 +452,56 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest");
 
-    // Check if pose is valid
-    if (!pose.matrix().isZero()) {
+    if (m_started) {
 
-        // Give 3D transformation matrix if available
-        transform3DStatus = m_T_M_W_status;
-        transform3D = m_T_M_W;
-        confidence = m_confidence;
+        // Check if pose is valid
+        if (!pose.matrix().isZero()) {
 
-        if (m_nb_relocalization_images == NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS) {
+            // Give 3D transformation matrix if available
+            transform3DStatus = m_T_M_W_status;
+            transform3D = m_T_M_W;
+            confidence = m_confidence;
 
-            LOG_DEBUG("Push image and pose for relocalization task");
+            if (m_nb_relocalization_images == NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS) {
 
-            if (m_T_M_W_status == NO_3DTRANSFORM)
-                m_dropBufferRelocalization.push(std::make_pair(image, pose));
+                LOG_DEBUG("Push image and pose for relocalization task");
 
-            if (m_T_M_W_status == NO_3DTRANSFORM)
-                m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
+                if (m_T_M_W_status == NO_3DTRANSFORM)
+                    m_dropBufferRelocalization.push(std::make_pair(image, pose));
 
-            m_nb_relocalization_images = 0;
-        }
-        else
-            m_nb_relocalization_images ++;
+                if (m_T_M_W_status == NO_3DTRANSFORM)
+                    m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
-        // Send image and pose to mapping service (if 3D transformation matrix is available)
-        if (m_T_M_W_status != NO_3DTRANSFORM) {
+                m_nb_relocalization_images = 0;
+            }
+            else
+                m_nb_relocalization_images ++;
 
-            LOG_DEBUG("Push image and pose for mapping task");
-            m_dropBufferMapping.push(std::make_pair(image, pose));
+            // Send image and pose to mapping service (if 3D transformation matrix is available)
+            if (m_T_M_W_status != NO_3DTRANSFORM) {
 
-            // Update 3D transformation matrix status
-            if (m_T_M_W_status == NEW_3DTRANSFORM) {
-                LOG_DEBUG("New 3D transformation matrix sent");
-                m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+                LOG_DEBUG("Push image and pose for mapping task");
+                m_dropBufferMapping.push(std::make_pair(image, pose));
+
+                // Update 3D transformation matrix status
+                if (m_T_M_W_status == NEW_3DTRANSFORM) {
+                    LOG_DEBUG("New 3D transformation matrix sent");
+                    m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+                }
             }
         }
+    }
+    else {
+        if (!m_init) {
+            LOG_ERROR("Pipeline has not been initialized");
+        }
+        if (!m_cameraOK){
+            LOG_ERROR("Camera parameters have not been set");
+        }
+        if (!m_started){
+            LOG_ERROR("Pipeline has not been started");
+        }
+        return FrameworkReturnCode::_ERROR_;
     }
 
     return FrameworkReturnCode::_SUCCESS;
@@ -499,10 +514,17 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest");
 
-    // Give 3D transformation matrix if available
-    transform3DStatus = m_T_M_W_status;
-    transform3D = m_T_M_W;
-    confidence = m_confidence;
+    if (m_started) {
+
+        // Give 3D transformation matrix if available
+        transform3DStatus = m_T_M_W_status;
+        transform3D = m_T_M_W;
+        confidence = m_confidence;
+    }
+    else {
+        LOG_ERROR("Pipeline not started!");
+        return FrameworkReturnCode::_ERROR_;
+    }
 
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -537,7 +559,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         m_T_M_W = new_pose * pose.inverse();
         m_T_M_W_status = NEW_3DTRANSFORM;
 
-        LOG_INFO("Transformation matrix from client to SolAR: \n{}", m_T_M_W.matrix());
+        LOG_INFO("Transformation matrix from client to SolAR:\n{}", m_T_M_W.matrix());
     }
     else
     {
