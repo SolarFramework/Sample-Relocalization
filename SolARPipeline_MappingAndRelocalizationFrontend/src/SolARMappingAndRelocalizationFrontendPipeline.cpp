@@ -299,10 +299,15 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
 
         LOG_DEBUG("Empty buffers");
 
+        std::pair<SRef<Image>, Transform3Df> imagePose;
+        m_dropBufferRelocalization.tryPop(imagePose);
+        m_dropBufferRelocalizationMarker.tryPop(imagePose);
+        m_dropBufferMapping.tryPop(imagePose);
+/*
         m_dropBufferRelocalization.clear();
         m_dropBufferRelocalizationMarker.clear();
         m_dropBufferMapping.clear();
-
+*/
         if (m_relocalizationService != nullptr){
 
             LOG_DEBUG("Start the relocalization service");
