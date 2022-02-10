@@ -26,8 +26,10 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
-// Set the number of images between to requests to the relocalization service
+// Set the number of images between two requests to the relocalization service
 #define NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS 5
+// Set the number of transformation matrix to get from the relocalization service before mapping
+#define NB_RELOCALIZATION_TRANSFORMATION_MATRIX 10
 
 // Public methods
 
@@ -296,6 +298,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
         m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
+        m_nb_relocalization_matrix = 0;
+        m_vector_reloc_transf_matrix.clear();
 
         LOG_DEBUG("Empty buffers");
 
@@ -461,23 +465,22 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             transform3D = m_T_M_W;
             confidence = m_confidence;
 
-            if (m_nb_relocalization_images == NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS) {
+            if (m_T_M_W_status == NO_3DTRANSFORM) {
+                if (m_nb_relocalization_images == NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS) {
 
-                LOG_DEBUG("Push image and pose for relocalization task");
+                    LOG_DEBUG("Push image and pose for relocalization task");
 
-                if (m_T_M_W_status == NO_3DTRANSFORM)
                     m_dropBufferRelocalization.push(std::make_pair(image, pose));
 
-                if (m_T_M_W_status == NO_3DTRANSFORM)
                     m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
-                m_nb_relocalization_images = 0;
+                    m_nb_relocalization_images = 0;
+                }
+                else
+                    m_nb_relocalization_images ++;
             }
-            else
-                m_nb_relocalization_images ++;
-
-            // Send image and pose to mapping service (if 3D transformation matrix is available)
-            if (m_T_M_W_status != NO_3DTRANSFORM) {
+            else {
+                // Send image and pose to mapping service (if 3D transformation matrix is available)
 
                 LOG_DEBUG("Push image and pose for mapping task");
                 m_dropBufferMapping.push(std::make_pair(image, pose));
@@ -554,9 +557,19 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         LOG_DEBUG("Client original pose: {}", pose.matrix());
         LOG_DEBUG("SolAR new pose: {}", new_pose.matrix());
 
-        // Calculate new 3D transformation matrix
-        m_T_M_W = new_pose * pose.inverse();
-        m_T_M_W_status = NEW_3DTRANSFORM;
+        // Add matrix to vector
+        m_vector_reloc_transf_matrix.push_back(new_pose * pose.inverse());
+        m_nb_relocalization_matrix ++;
+
+        // Wait for enough transformation matrix to calculate medium matrix
+        if (m_nb_relocalization_matrix == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
+            LOG_INFO("=> Enough transformation matrix: calculate medium value");
+
+// TODO: Calculate medium transformation matrix from matrix vector
+
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
 
         LOG_INFO("Transformation matrix from client to SolAR:\n{}", m_T_M_W.matrix());
     }
@@ -587,8 +600,19 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
         LOG_INFO("Hololens pose: \n{}", pose.matrix());
         LOG_INFO("World pose: \n{}", new_pose.matrix());
 
-        m_T_M_W = new_pose * pose.inverse();
-        m_T_M_W_status = NEW_3DTRANSFORM;
+        // Add matrix to vector
+        m_vector_reloc_transf_matrix.push_back(new_pose * pose.inverse());
+        m_nb_relocalization_matrix ++;
+
+        // Wait for enough transformation matrix to calculate medium matrix
+        if (m_nb_relocalization_matrix == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
+            LOG_INFO("=> Enough transformation matrix: calculate medium value");
+
+// TODO: Calculate medium transformation matrix from matrix vector
+
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
 
         // To force a relocalization request
         m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;

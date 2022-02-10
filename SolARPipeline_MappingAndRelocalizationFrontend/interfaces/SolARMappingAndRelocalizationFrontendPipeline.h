@@ -166,6 +166,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     float_t m_confidence = 0;
 
     int8_t m_nb_relocalization_images; // Nb images since last relocalization
+    int8_t m_nb_relocalization_matrix; // Nb 3D transformation matrix found
+
+    // Vector of 3D transformation matrix given by Relocalization service
+    std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
+
 };
 
 } // namespace RELOCALIZATION
