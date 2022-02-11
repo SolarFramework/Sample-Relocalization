@@ -306,22 +306,16 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             if (m_pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
-                std::vector<Point2Df> pts2DInliers;
-                for (const auto& it : inliers)
-                    pts2DInliers.push_back(pts2D[it]);
 				m_isMap = true;
 				m_nbRelocFails = 0;
                 LOG_DEBUG("Got the new pose: relocalization successful");
                 return FrameworkReturnCode::_SUCCESS;
             }
-            else {
-				m_nbRelocFails++;
-				if (m_mapUpdatePipeline && (m_nbRelocFails >= THRES_NB_RELOC_FAILS))
-					m_isMap = false;
-                LOG_DEBUG("Failed to get the new pose");
-                return FrameworkReturnCode::_ERROR_;
-            }
         }
+		m_nbRelocFails++;
+		if (m_mapUpdatePipeline && (m_nbRelocFails >= THRES_NB_RELOC_FAILS))
+			m_isMap = false;
+		LOG_DEBUG("Failed to relocalization");
     }
     else {
         if (!m_initOK) {
@@ -333,9 +327,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
         if (!m_started){
             LOG_ERROR("Pipeline has not been started");
         }
-        return FrameworkReturnCode::_ERROR_;
     }
-
     return FrameworkReturnCode::_ERROR_;
 }
 
