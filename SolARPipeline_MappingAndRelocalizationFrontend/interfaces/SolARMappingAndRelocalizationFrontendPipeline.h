@@ -136,6 +136,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief send requests to the mapping service
     void processMapping();
 
+	/// @brief find transformation matrix
+	void findTransformation(Transform3Df transform);
+
   private:
 
     // Relocalization and mapping services
@@ -165,7 +168,14 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     TransformStatus m_T_M_W_status = NO_3DTRANSFORM;
     float_t m_confidence = 0;
 
-    int8_t m_nb_relocalization_images; // Nb images since last relocalization
+	int m_nbImagesBetweenRelocRequest = 5;
+	int m_nbRelocTransformMatrixRequest = 5;
+    int8_t m_nb_relocalization_images; // Nb images since last relocalization    
+
+    // Vector of 3D transformation matrix given by Relocalization service
+    std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
+
+	std::mutex m_mutex;
 };
 
 } // namespace RELOCALIZATION
