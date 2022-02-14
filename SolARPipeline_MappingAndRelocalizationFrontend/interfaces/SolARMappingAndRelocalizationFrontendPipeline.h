@@ -168,6 +168,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     TransformStatus m_T_M_W_status = NO_3DTRANSFORM;
     float_t m_confidence = 0;
 
+	int m_nbImagesBetweenRelocRequest = 5;
+	int m_nbRelocTransformMatrixRequest = 5;
     int8_t m_nb_relocalization_images; // Nb images since last relocalization    
 
     // Vector of 3D transformation matrix given by Relocalization service

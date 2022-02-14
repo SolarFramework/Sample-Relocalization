@@ -26,11 +26,6 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
-// Set the number of images between two requests to the relocalization service
-#define NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS 5
-// Set the number of transformation matrix to get from the relocalization service before mapping
-#define NB_RELOCALIZATION_TRANSFORMATION_MATRIX 5
-
 // Public methods
 
 SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFrontendPipeline():ConfigurableBase(xpcf::toUUID<SolARMappingAndRelocalizationFrontendPipeline>())
@@ -43,6 +38,8 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
         declareInjectable<api::input::files::ITrackableLoader>(m_trackableLoader, true);
         declareInjectable<api::solver::pose::ITrackablePose>(m_trackablePose, true);
+		declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
+		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
         LOG_DEBUG("All component injections declared");
 
@@ -297,7 +294,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         m_T_M_W = Transform3Df::Identity();
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
-        m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
+        m_nb_relocalization_images = m_nbImagesBetweenRelocRequest;
         m_vector_reloc_transf_matrix.clear();
 
         LOG_DEBUG("Empty buffers");
@@ -465,7 +462,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             confidence = m_confidence;
 
             if (m_T_M_W_status == NO_3DTRANSFORM) {
-                if (m_nb_relocalization_images == NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS) {
+                if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
 
                     LOG_DEBUG("Push image and pose for relocalization task");
 
@@ -616,15 +613,15 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
 	std::unique_lock<std::mutex> lock(m_mutex);
 	m_vector_reloc_transf_matrix.push_back(transform);
 	// find mean transformation
-	if (m_vector_reloc_transf_matrix.size() == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
+	if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
 		Vector3f translations(0.f, 0.f, 0.f); 
 		Vector3f eulers(0.f, 0.f, 0.f);
 		for (auto t : m_vector_reloc_transf_matrix) {
 			translations += t.translation();
-			eulers += m_T_M_W.rotation().eulerAngles(0, 1, 2);
+			eulers += t.rotation().eulerAngles(0, 1, 2);
 		}
-		translations /= NB_RELOCALIZATION_TRANSFORMATION_MATRIX;
-		eulers /= NB_RELOCALIZATION_TRANSFORMATION_MATRIX;
+		translations /= m_nbRelocTransformMatrixRequest;
+		eulers /= m_nbRelocTransformMatrixRequest;
 		Maths::Matrix3f rot;
 		rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
 			* Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
