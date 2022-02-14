@@ -29,7 +29,7 @@ namespace RELOCALIZATION {
 // Set the number of images between two requests to the relocalization service
 #define NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS 5
 // Set the number of transformation matrix to get from the relocalization service before mapping
-#define NB_RELOCALIZATION_TRANSFORMATION_MATRIX 10
+#define NB_RELOCALIZATION_TRANSFORMATION_MATRIX 5
 
 // Public methods
 
@@ -298,7 +298,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
         m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
-        m_nb_relocalization_matrix = 0;
         m_vector_reloc_transf_matrix.clear();
 
         LOG_DEBUG("Empty buffers");
@@ -553,25 +552,11 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 
     if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
         LOG_INFO("Relocalization succeeded");
-
-        LOG_DEBUG("Client original pose: {}", pose.matrix());
-        LOG_DEBUG("SolAR new pose: {}", new_pose.matrix());
-
+        LOG_DEBUG("Client original pose: \n{}", pose.matrix());
+        LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
+		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
         // Add matrix to vector
-        m_vector_reloc_transf_matrix.push_back(new_pose * pose.inverse());
-        m_nb_relocalization_matrix ++;
-
-        // Wait for enough transformation matrix to calculate medium matrix
-        if (m_nb_relocalization_matrix == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
-            LOG_INFO("=> Enough transformation matrix: calculate medium value");
-
-// TODO: Calculate medium transformation matrix from matrix vector
-
-            m_T_M_W = new_pose * pose.inverse();
-            m_T_M_W_status = NEW_3DTRANSFORM;
-        }
-
-        LOG_INFO("Transformation matrix from client to SolAR:\n{}", m_T_M_W.matrix());
+		findTransformation(new_pose * pose.inverse());       
     }
     else
     {
@@ -595,29 +580,12 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
     LOG_DEBUG("Relocalization marker processing");
 
     if (m_trackablePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
-
         LOG_INFO("=> Relocalization marker succeeded");
-        LOG_INFO("Hololens pose: \n{}", pose.matrix());
-        LOG_INFO("World pose: \n{}", new_pose.matrix());
-
-        // Add matrix to vector
-        m_vector_reloc_transf_matrix.push_back(new_pose * pose.inverse());
-        m_nb_relocalization_matrix ++;
-
-        // Wait for enough transformation matrix to calculate medium matrix
-        if (m_nb_relocalization_matrix == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
-            LOG_INFO("=> Enough transformation matrix: calculate medium value");
-
-// TODO: Calculate medium transformation matrix from matrix vector
-
-            m_T_M_W = new_pose * pose.inverse();
-            m_T_M_W_status = NEW_3DTRANSFORM;
-        }
-
-        // To force a relocalization request
-        m_nb_relocalization_images = NB_IMAGES_BETWEEN_RELOCALIZATION_REQUESTS;
-
-        LOG_INFO("Transformation matrix from Hololens to World: \n{}", m_T_M_W.matrix());
+        LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
+        LOG_DEBUG("World pose: \n{}", new_pose.matrix());
+		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
+		// Add matrix to vector
+		findTransformation(new_pose * pose.inverse());
     }
 }
 
@@ -641,6 +609,31 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     if (m_mappingService->mappingProcessRequest(image, m_T_M_W * pose) != SolAR::FrameworkReturnCode::_SUCCESS) {
         LOG_DEBUG("Mapping processing request failed");
     }
+}
+
+void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform3Df transform)
+{
+	std::unique_lock<std::mutex> lock(m_mutex);
+	m_vector_reloc_transf_matrix.push_back(transform);
+	// find mean transformation
+	if (m_vector_reloc_transf_matrix.size() == NB_RELOCALIZATION_TRANSFORMATION_MATRIX) {
+		Vector3f translations(0.f, 0.f, 0.f); 
+		Vector3f eulers(0.f, 0.f, 0.f);
+		for (auto t : m_vector_reloc_transf_matrix) {
+			translations += t.translation();
+			eulers += m_T_M_W.rotation().eulerAngles(0, 1, 2);
+		}
+		translations /= NB_RELOCALIZATION_TRANSFORMATION_MATRIX;
+		eulers /= NB_RELOCALIZATION_TRANSFORMATION_MATRIX;
+		Maths::Matrix3f rot;
+		rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
+			* Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
+			* Maths::AngleAxisf(eulers[2], Vector3f::UnitZ());
+		m_T_M_W.linear() = rot;
+		m_T_M_W.translation() = translations;
+		m_T_M_W_status = NEW_3DTRANSFORM;
+		LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", m_T_M_W.matrix());
+	}
 }
 
 } // namespace RELOCALIZATION
