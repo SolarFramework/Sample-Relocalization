@@ -618,7 +618,11 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
 		Vector3f eulers(0.f, 0.f, 0.f);
 		for (auto t : m_vector_reloc_transf_matrix) {
 			translations += t.translation();
-			eulers += t.rotation().eulerAngles(0, 1, 2);
+			Vector3f e = t.rotation().eulerAngles(0, 1, 2);
+			if (e[0] < 0) e[0] += 2 * SOLAR_PI;
+			if (e[1] < 0) e[1] += 2 * SOLAR_PI;
+			if (e[2] < 0) e[2] += 2 * SOLAR_PI;
+			eulers += e;
 		}
 		translations /= m_nbRelocTransformMatrixRequest;
 		eulers /= m_nbRelocTransformMatrixRequest;
