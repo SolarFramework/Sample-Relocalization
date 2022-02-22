@@ -73,11 +73,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
 
-    if (m_initOK) {
-        LOG_WARNING("Pipeline has already been initialized");
-        return FrameworkReturnCode::_SUCCESS;
-    }
-
     if (m_mapUpdatePipeline != nullptr) {
 
         LOG_DEBUG("Map Update pipeline URL = {}",
@@ -96,7 +91,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
     else {
         LOG_ERROR("Map Update pipeline not defined");
     }
-	m_initOK = true;
+
+    if (m_initOK) {
+        LOG_WARNING("Pipeline has already been initialized");
+        return FrameworkReturnCode::_SUCCESS;
+    }
+
+    m_initOK = true;
+
 	return FrameworkReturnCode::_SUCCESS;
 }
 
