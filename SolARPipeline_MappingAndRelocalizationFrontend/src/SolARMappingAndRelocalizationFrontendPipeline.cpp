@@ -99,11 +99,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
 
-    if (m_init) {
-        LOG_WARNING("Pipeline has already been initialized");
-        return FrameworkReturnCode::_SUCCESS;
-    }
-
     if (m_relocalizationService != nullptr){
 
         LOG_DEBUG("Relocalization service URL = {}",
@@ -146,6 +141,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     else {
         LOG_ERROR("Mapping service instance not created");
         return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (m_init) {
+        LOG_WARNING("Pipeline has already been initialized");
+        return FrameworkReturnCode::_SUCCESS;
     }
 
     if ((m_trackableLoader != nullptr) && (m_trackablePose != nullptr)) {
