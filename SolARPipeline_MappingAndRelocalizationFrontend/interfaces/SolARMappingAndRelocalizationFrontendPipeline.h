@@ -136,6 +136,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief send requests to the mapping service
     void processMapping();
 
+	/// @brief find transformation matrix
+	void findTransformation(Transform3Df transform);
+
   private:
 
     // Relocalization and mapping services
@@ -145,7 +148,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     SRef<api::input::files::ITrackableLoader>       m_trackableLoader;
     SRef<api::solver::pose::ITrackablePose>         m_trackablePose;
 
-    bool m_tasksStarted = false;  // Indicate if tasks are started
+    bool m_init = false;            // Indicate if initialization has been made
+    bool m_cameraOK = false;        // Indicate if camera parameters has been set
+    bool m_started = false;         // Indicate if pipeline il started
+    bool m_tasksStarted = false;    // Indicate if tasks are started
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
@@ -162,7 +168,14 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     TransformStatus m_T_M_W_status = NO_3DTRANSFORM;
     float_t m_confidence = 0;
 
-    int8_t m_nb_relocalization_images; // Nb images since last relocalization
+	int m_nbImagesBetweenRelocRequest = 5;
+	int m_nbRelocTransformMatrixRequest = 5;
+    int8_t m_nb_relocalization_images; // Nb images since last relocalization    
+
+    // Vector of 3D transformation matrix given by Relocalization service
+    std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
+
+	std::mutex m_mutex;
 };
 
 } // namespace RELOCALIZATION
