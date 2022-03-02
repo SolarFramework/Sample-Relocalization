@@ -82,6 +82,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode init() override;
 
+    /// @brief Specify the mode for the pipeline processing
+    /// @param[in] pipelineMode: mode to use for pipeline processing
+    /// @return FrameworkReturnCode::_SUCCESS if the mode is correctly initialized, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode initProcessingMode(const PipelineMode pipelineMode) override;
+
     /// @brief Set the camera parameters
     /// @param[in] cameraParams: the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
@@ -109,21 +114,31 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @param[out] transform3D : the current 3D transformation matrix (if available)
     /// @param[out] confidence: the confidence score of the 3D transformation matrix
     /// @return FrameworkReturnCode::_SUCCESS if the data are ready to be processed, else FrameworkReturnCode::_ERROR_
-    virtual FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                         const SolAR::datastructure::Transform3Df & pose,
-                                                         const std::chrono::system_clock::time_point & timestamp,
-                                                         TransformStatus & transform3DStatus,
-                                                         SolAR::datastructure::Transform3Df & transform3D,
-                                                         float_t & confidence) override;
+    FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
+                                                 const SolAR::datastructure::Transform3Df & pose,
+                                                 const std::chrono::system_clock::time_point & timestamp,
+                                                 TransformStatus & transform3DStatus,
+                                                 SolAR::datastructure::Transform3Df & transform3D,
+                                                 float_t & confidence) override;
 
-    /// @brief Request the asynchronous relocalization pipeline to get the 3D transform to the SolAR coordinates system
+    /// @brief Request the asynchronous relocalization pipeline to get the 3D transform offset
+    /// between the device coordinate system and the SolAR coordinate system
     /// @param[out] transform3DStatus: the status of the current 3D transformation matrix
     /// @param[out] transform3D : the current 3D transformation matrix (if available)
     /// @param[out] confidence: the confidence score of the 3D transformation matrix
     /// @return FrameworkReturnCode::_SUCCESS if the 3D transform is available, else FrameworkReturnCode::_ERROR_
-    virtual FrameworkReturnCode get3DTransformRequest(TransformStatus & transform3DStatus,
-                                                      SolAR::datastructure::Transform3Df & transform3D,
-                                                      float_t & confidence) const override;
+    FrameworkReturnCode get3DTransformRequest(TransformStatus & transform3DStatus,
+                                              SolAR::datastructure::Transform3Df & transform3D,
+                                              float_t & confidence) const override;
+
+    /// @brief Return the last pose processed by the pipeline
+    /// @param[out] pose: the last pose if available
+    /// @param[in] poseType: the type of the requested pose
+    ///            - in the SolAR coordinate system (by default)
+    ///            - in the device coordinate system
+    /// @return FrameworkReturnCode::_SUCCESS if the last pose is available, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getLastPose(SolAR::datastructure::Transform3Df & pose,
+                                    const PoseType poseType = SOLAR_POSE) const override;
 
   private:
 
@@ -174,6 +189,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // Vector of 3D transformation matrix given by Relocalization service
     std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
+
+    // Last pose received
+    SolAR::datastructure::Transform3Df m_lastPose;
 
 	std::mutex m_mutex;
 };

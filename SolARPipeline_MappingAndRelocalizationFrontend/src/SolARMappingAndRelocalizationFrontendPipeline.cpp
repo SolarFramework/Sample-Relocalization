@@ -121,26 +121,29 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_mappingService != nullptr){
+    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        LOG_DEBUG("Mapping service URL = {}",
-                 m_mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+        if (m_mappingService != nullptr){
 
-        LOG_DEBUG("Initialize the mapping service");
+            LOG_DEBUG("Mapping service URL = {}",
+                     m_mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
-        try {
-            if (m_mappingService->init() != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while initializing the mapping service");
+            LOG_DEBUG("Initialize the mapping service");
+
+            try {
+                if (m_mappingService->init() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while initializing the mapping service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+        }
+        else {
+            LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
-    }
-    else {
-        LOG_ERROR("Mapping service instance not created");
-        return FrameworkReturnCode::_ERROR_;
     }
 
     if (m_init) {
@@ -178,6 +181,24 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     return FrameworkReturnCode::_SUCCESS;
 }
 
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::initProcessingMode(const PipelineMode pipelineMode)
+{
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::initProcessingMode");
+
+    if (!m_started) {
+        m_PipelineMode = pipelineMode;
+
+        // New initialization for services if needed
+        init();
+    }
+    else {
+        LOG_ERROR("Pipeline is already started");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const CameraParameters & cameraParams)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters");
@@ -206,23 +227,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_mappingService != nullptr){
+    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        LOG_DEBUG("Set camera parameters for the mapping service");
+        if (m_mappingService != nullptr){
 
-        try {
-            if (m_mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while setting camera parameters for the mapping service");
+            LOG_DEBUG("Set camera parameters for the mapping service");
+
+            try {
+                if (m_mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while setting camera parameters for the mapping service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+        }
+        else {
+            LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
-    }
-    else {
-        LOG_ERROR("Mapping service instance not created");
-        return FrameworkReturnCode::_ERROR_;
     }
 
     if (m_trackablePose != nullptr) {
@@ -296,6 +320,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         m_confidence = 1;
         m_nb_relocalization_images = m_nbImagesBetweenRelocRequest;
         m_vector_reloc_transf_matrix.clear();
+        m_lastPose  = Transform3Df(Maths::Matrix4f::Zero());
 
         LOG_DEBUG("Empty buffers");
 
@@ -327,23 +352,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_mappingService != nullptr){
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            LOG_DEBUG("Start the mapping service");
+            if (m_mappingService != nullptr){
 
-            try {
-                if (m_mappingService->start() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while starting the mapping service");
+                LOG_DEBUG("Start the mapping service");
+
+                try {
+                    if (m_mappingService->start() != FrameworkReturnCode::_SUCCESS) {
+                        LOG_ERROR("Error while starting the mapping service");
+                        return FrameworkReturnCode::_ERROR_;
+                    }
+                }  catch (const std::exception &e) {
+                    LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+            }
+            else {
+                LOG_ERROR("Mapping service instance not created");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }
-        else {
-            LOG_ERROR("Mapping service instance not created");
-            return FrameworkReturnCode::_ERROR_;
         }
 
         if (!m_tasksStarted) {
@@ -415,23 +443,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_mappingService != nullptr){
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            LOG_DEBUG("Stop the mapping service");
+            if (m_mappingService != nullptr){
 
-            try {
-                if (m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while stopping the mapping service");
+                LOG_DEBUG("Stop the mapping service");
+
+                try {
+                    if (m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
+                        LOG_ERROR("Error while stopping the mapping service");
+                        return FrameworkReturnCode::_ERROR_;
+                    }
+                }  catch (const std::exception &e) {
+                    LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+            }
+            else {
+                LOG_ERROR("Mapping service instance not created");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }
-        else {
-            LOG_ERROR("Mapping service instance not created");
-            return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
@@ -456,19 +487,53 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         // Check if pose is valid
         if (!pose.matrix().isZero()) {
 
+            // Store last pose received
+            m_lastPose = pose;
+
             // Give 3D transformation matrix if available
             transform3DStatus = m_T_M_W_status;
             transform3D = m_T_M_W;
             confidence = m_confidence;
 
-            if (m_T_M_W_status == NO_3DTRANSFORM) {
+            if (m_PipelineMode == RELOCALIZATION_AND_MAPPING) {
+
+                // Do relocalization first, then mapping
+
+                if (m_T_M_W_status == NO_3DTRANSFORM) {
+                    if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
+
+                        LOG_DEBUG("Push image and pose for relocalization task");
+
+                        m_dropBufferRelocalization.push(std::make_pair(image, pose));
+
+                        m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
+
+                        m_nb_relocalization_images = 0;
+                    }
+                    else
+                        m_nb_relocalization_images ++;
+                }
+                else {
+                    // Send image and pose to mapping service (if 3D transformation matrix is available)
+
+                    LOG_DEBUG("Push image and pose for mapping task");
+                    m_dropBufferMapping.push(std::make_pair(image, pose));
+
+                    // Update 3D transformation matrix status
+                    if (m_T_M_W_status == NEW_3DTRANSFORM) {
+                        LOG_DEBUG("New 3D transformation matrix sent");
+                        m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+                    }                    
+                }
+            }
+            else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+
+                // Do only relocalization (for all images and poses)
                 if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
 
                     LOG_DEBUG("Push image and pose for relocalization task");
 
                     m_dropBufferRelocalization.push(std::make_pair(image, pose));
-
-                    m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
                     m_nb_relocalization_images = 0;
                 }
@@ -476,16 +541,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                     m_nb_relocalization_images ++;
             }
             else {
-                // Send image and pose to mapping service (if 3D transformation matrix is available)
-
-                LOG_DEBUG("Push image and pose for mapping task");
-                m_dropBufferMapping.push(std::make_pair(image, pose));
-
-                // Update 3D transformation matrix status
-                if (m_T_M_W_status == NEW_3DTRANSFORM) {
-                    LOG_DEBUG("New 3D transformation matrix sent");
-                    m_T_M_W_status = PREVIOUS_3DTRANSFORM;
-                }
+                LOG_ERROR("Unknwon pipeline processing mode");
+                return FrameworkReturnCode::_ERROR_;
             }
         }
     }
@@ -521,6 +578,44 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
     }
     else {
         LOG_ERROR("Pipeline not started!");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
+                                SolAR::datastructure::Transform3Df & pose,
+                                const PoseType poseType) const
+{
+    if (!m_started) {
+        LOG_ERROR("Pipeline not started!");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (!m_lastPose.matrix().isZero()) {
+
+        if (poseType == DEVICE_POSE) {
+            // Return last pose in device coordinate system
+            pose = m_lastPose;
+        }
+        else if (poseType == SOLAR_POSE) {
+            // Return last pose in SolAR coordinate system
+            if (m_T_M_W_status != NO_3DTRANSFORM) {
+                pose = m_T_M_W * m_lastPose;
+            }
+            else {
+                LOG_DEBUG("No 3D transformation matrix");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+        else {
+            LOG_ERROR("Unknown pose type");
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_DEBUG("No available pose");
         return FrameworkReturnCode::_ERROR_;
     }
 
