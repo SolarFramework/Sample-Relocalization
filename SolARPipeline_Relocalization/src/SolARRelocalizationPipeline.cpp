@@ -173,14 +173,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
     }
 
     if (!m_started) {     
-		if (m_mapUpdatePipeline) {
-			LOG_DEBUG("Start remote map update pipeline");
-			if (m_mapUpdatePipeline->start() != FrameworkReturnCode::_SUCCESS) {
-				LOG_ERROR("Cannot start Map Update pipeline");
-				return FrameworkReturnCode::_ERROR_;
-			}			
-		}
-		else {
+        if (!m_mapUpdatePipeline) {
 			LOG_DEBUG("Load initial map from local file");
 			// Load map from file
 			if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
@@ -223,13 +216,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::stop()
     if (m_started) {
 
         m_started = false;
-
-        if (m_mapUpdatePipeline) {
-			LOG_DEBUG("Stop remote map update pipeline");
-			if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
-				LOG_ERROR("Cannot stop Map Update pipeline");
-			}
-		}
     }
     else {
         LOG_INFO("Pipeline already stopped");
@@ -258,6 +244,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 
 		if (m_mapUpdatePipeline && !m_isMap) {
 			SRef<Map> subMap;
+            if (m_mapUpdatePipeline->start() != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Cannot start Map Update pipeline");
+                return FrameworkReturnCode::_ERROR_;
+            }
             if (m_mapUpdatePipeline->getSubmapRequest(frame, subMap) == FrameworkReturnCode::_SUCCESS){
 				m_mapManager->setMap(subMap);
                 m_keyframeCollection = subMap->getConstKeyframeCollection();                                
@@ -269,8 +259,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 LOG_DEBUG("Cannot get submap");
                 return FrameworkReturnCode::_ERROR_;
             }
-		}
-
+            if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Cannot stop Map Update pipeline");
+            }
+        }
 
         // keyframes retrieval
         std::vector <uint32_t> retKeyframesId;

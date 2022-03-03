@@ -518,12 +518,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
                     LOG_DEBUG("Push image and pose for mapping task");
                     m_dropBufferMapping.push(std::make_pair(image, pose));
-
-                    // Update 3D transformation matrix status
-                    if (m_T_M_W_status == NEW_3DTRANSFORM) {
-                        LOG_DEBUG("New 3D transformation matrix sent");
-                        m_T_M_W_status = PREVIOUS_3DTRANSFORM;
-                    }                    
                 }
             }
             else if (m_PipelineMode == RELOCALIZATION_ONLY) {
@@ -534,6 +528,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                     LOG_DEBUG("Push image and pose for relocalization task");
 
                     m_dropBufferRelocalization.push(std::make_pair(image, pose));
+
+                    m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
 
                     m_nb_relocalization_images = 0;
                 }
@@ -626,7 +622,12 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalization.tryPop(imagePose)) {
+    if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
+        xpcf::DelegateTask::yield();
+        return;
+    }
+
+    if (!m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
@@ -647,12 +648,24 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         LOG_DEBUG("Client original pose: \n{}", pose.matrix());
         LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-        // Add matrix to vector
-		findTransformation(new_pose * pose.inverse());       
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
     }
     else
     {
         LOG_DEBUG("Relocalization failed");
+
+        if (m_T_M_W_status == NEW_3DTRANSFORM) {
+            m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+        }
+
     }
 }
 
@@ -676,8 +689,15 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
         LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
         LOG_DEBUG("World pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-		// Add matrix to vector
-		findTransformation(new_pose * pose.inverse());
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
     }
 }
 
