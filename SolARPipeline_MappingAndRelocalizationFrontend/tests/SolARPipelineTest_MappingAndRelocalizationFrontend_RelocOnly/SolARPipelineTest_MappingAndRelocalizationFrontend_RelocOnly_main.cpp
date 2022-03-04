@@ -105,17 +105,10 @@ int main(int argc, char ** argv)
             return -1;
         }
 
-        LOG_INFO("Set relocalization only mode");
+        LOG_INFO("Initialize the pipeline in \'relocalization only\' mode");
 
-        if (gRelocalizationAndMappingFrontendPipeline->initProcessingMode(
-                    SolAR::api::pipeline::RELOCALIZATION_ONLY) != FrameworkReturnCode::_SUCCESS) {
-            LOG_ERROR("Error while initializing the processing mode");
-            return -1;
-        }
-
-        LOG_INFO("Initialize the pipeline");
-
-        if (gRelocalizationAndMappingFrontendPipeline->init() != FrameworkReturnCode::_SUCCESS) {
+        if (gRelocalizationAndMappingFrontendPipeline->init(SolAR::api::pipeline::RELOCALIZATION_ONLY)
+                != FrameworkReturnCode::_SUCCESS) {
             LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
             return -1;
         }

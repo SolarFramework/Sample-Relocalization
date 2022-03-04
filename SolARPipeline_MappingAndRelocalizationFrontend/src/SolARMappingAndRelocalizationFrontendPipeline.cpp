@@ -181,22 +181,13 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::initProcessingMode(const PipelineMode pipelineMode)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode pipelineMode)
 {
-    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::initProcessingMode");
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode)");
 
-    if (!m_started) {
-        m_PipelineMode = pipelineMode;
+    m_PipelineMode = pipelineMode;
 
-        // New initialization for services if needed
-        init();
-    }
-    else {
-        LOG_ERROR("Pipeline is already started");
-        return FrameworkReturnCode::_ERROR_;
-    }
-
-    return FrameworkReturnCode::_SUCCESS;
+    return init();
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const CameraParameters & cameraParams)

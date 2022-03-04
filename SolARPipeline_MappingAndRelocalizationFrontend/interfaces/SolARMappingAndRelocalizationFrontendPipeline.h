@@ -82,10 +82,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode init() override;
 
-    /// @brief Specify the mode for the pipeline processing
+    /// @brief Init the pipeline and specify the mode for the pipeline processing
     /// @param[in] pipelineMode: mode to use for pipeline processing
     /// @return FrameworkReturnCode::_SUCCESS if the mode is correctly initialized, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode initProcessingMode(const PipelineMode pipelineMode) override;
+    FrameworkReturnCode init(PipelineMode pipelineMode) override;
 
     /// @brief Set the camera parameters
     /// @param[in] cameraParams: the camera parameters (its resolution and its focal)
