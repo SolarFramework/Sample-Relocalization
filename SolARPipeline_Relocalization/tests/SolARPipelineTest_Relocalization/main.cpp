@@ -79,14 +79,24 @@ int main(int argc, char *argv[]){
 			LOG_ERROR("Cannot start relocalization pipeline");
 			return -1;
 		}
-		// get point cloud and keyframe poses to display
-		std::vector<Transform3Df>   keyframePoses;
-		std::vector<SRef<Keyframe>> allKeyframes;
-		gKeyframeManager->getAllKeyframes(allKeyframes);
-		for (auto const &it : allKeyframes)
-			keyframePoses.push_back(it->getPose());
-		std::vector<SRef<CloudPoint>> pointCloud;
-		gPointCloudManager->getAllPoints(pointCloud);		
+
+		// display function
+        auto fnDisplay = [&gKeyframeManager, &gPointCloudManager, &gViewer3D](const std::vector<Transform3Df>& framePoses) {
+            // get all keyframes and point cloud
+            std::vector<Transform3Df>   keyframePoses;
+            std::vector<SRef<Keyframe>> allKeyframes;
+            gKeyframeManager->getAllKeyframes(allKeyframes);
+            for (auto const &it : allKeyframes)
+                keyframePoses.push_back(it->getPose());
+            std::vector<SRef<CloudPoint>> pointCloud;
+            gPointCloudManager->getAllPoints(pointCloud);
+            // display point cloud
+            if (framePoses.size() == 0
+                || gViewer3D->display(pointCloud, framePoses.back(), framePoses, {}, {}, keyframePoses) == FrameworkReturnCode::_STOP)
+                return false;
+            else
+                return true;
+        };
 
 		// relocalize
         unsigned int nb_images = NB_IMAGES_BETWEEN_REQUESTS;
@@ -107,12 +117,12 @@ int main(int argc, char *argv[]){
             }
             else
 				LOG_DEBUG("Relocalization fails");
-			if (gImageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP) break;
-			if (gViewer3D->display(pointCloud, pose, framePoses, {}, {}, keyframePoses) == FrameworkReturnCode::_STOP) break;                      
+            if (gImageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP) break;
+            fnDisplay(framePoses);
         }         
 		// display all relocalization camera poses
 		while (true) {
-			if (gViewer3D->display(pointCloud, Transform3Df::Identity(), framePoses, {}, {}, keyframePoses) == FrameworkReturnCode::_STOP)
+            if (!fnDisplay(framePoses))
 				break;
 		}
     }

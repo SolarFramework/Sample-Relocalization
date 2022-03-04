@@ -122,6 +122,11 @@
                 <property name="channelCredentials" access="rw" type="uint" value="0"/>
         </configure>
 
+        <configure component="SolARMappingAndRelocalizationFrontendPipeline">
+            <property name="nbImagesBetweenRequest" access="rw" type="uint" value="3"/>
+            <property name="nbRelocRequest" access="rw" type="uint" value="5"/>
+        </configure>
+
         <configure component="SolARFiducialMarkerPoseEstimator">
             <property name="nbThreshold" type="int" value="8"/>
             <property name="minThreshold" type="int" value="-1"/>
