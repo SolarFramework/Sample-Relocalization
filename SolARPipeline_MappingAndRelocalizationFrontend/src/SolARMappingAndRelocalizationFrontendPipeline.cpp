@@ -19,6 +19,11 @@
 #include "core/Log.h"
 #include "boost/log/core/core.hpp"
 
+#include "SolARFiducialMarkerLoaderOpencv.h"
+#include "SolARFiducialMarkerPoseEstimator.h"
+#include "SolARQRCodeLoaderOpencv.h"
+#include "SolARQRCodePoseEstimatorOpencv.h"
+
 namespace xpcf  = org::bcom::xpcf;
 
 namespace SolAR {
@@ -36,9 +41,15 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         LOG_DEBUG("Components injection declaration");
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, true);
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
-        declareInjectable<api::input::files::ITrackableLoader>(m_trackableLoader, true);
-        declareInjectable<api::solver::pose::ITrackablePose>(m_trackablePose, true);
-		declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
+        declareInjectable<api::input::files::ITrackableLoader>(
+                    m_fiducialMarkerLoader, "FiducialMarkerLoader", true);
+        declareInjectable<api::solver::pose::ITrackablePose>(
+                    m_fiducialMarkerPose, "FiducialMarkerPose", true);
+        declareInjectable<api::input::files::ITrackableLoader>(
+                    m_QRCodeLoader, "QRCodeLoader", true);
+        declareInjectable<api::solver::pose::ITrackablePose>(
+                    m_QRCodePose, "QRCodePose", true);
+        declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
         LOG_DEBUG("All component injections declared");
@@ -151,28 +162,53 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_SUCCESS;
     }
 
-    if ((m_trackableLoader != nullptr) && (m_trackablePose != nullptr)) {
+    if ((m_fiducialMarkerLoader != nullptr) && (m_fiducialMarkerPose != nullptr)) {
 
-        LOG_DEBUG("Load and set Trackable object");
+        LOG_DEBUG("Load and set Fiducial Marker Trackable object");
 
         SRef<Trackable> trackable;
 
-        if (m_trackableLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+        if (m_fiducialMarkerLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
         {
-            LOG_ERROR("Cannot load trackable object");
+            LOG_ERROR("Cannot load fiducial marker trackable object");
             return FrameworkReturnCode::_ERROR_;
         }
         else
         {
-            if (m_trackablePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+            if (m_fiducialMarkerPose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
             {
-                LOG_ERROR("Cannot set trackable object to trackable pose estimator");
+                LOG_ERROR("Cannot set fiducial marker trackable object to trackable pose estimator");
                 return FrameworkReturnCode::_ERROR_;
             }
         }
     }
     else {
-        LOG_ERROR("Trackable loader and pose instance not created");
+        LOG_ERROR("Trackable loader and pose instance not created for fiducial marker");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if ((m_QRCodeLoader != nullptr) && (m_QRCodePose != nullptr)) {
+
+        LOG_DEBUG("Load and set QRCode Trackable object");
+
+        SRef<Trackable> trackable;
+
+        if (m_QRCodeLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+        {
+            LOG_ERROR("Cannot load QRcode trackable object");
+            return FrameworkReturnCode::_ERROR_;
+        }
+        else
+        {
+            if (m_QRCodePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+            {
+                LOG_ERROR("Cannot set QRCode trackable object to trackable pose estimator");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+    }
+    else {
+        LOG_ERROR("Trackable loader and pose instance not created for QRCode marker");
         return FrameworkReturnCode::_ERROR_;
     }
 
@@ -240,14 +276,25 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         }
     }
 
-    if (m_trackablePose != nullptr) {
+    if (m_fiducialMarkerPose != nullptr) {
 
-        LOG_DEBUG("Set camera parameters for the trackable pose");
+        LOG_DEBUG("Set camera parameters for the fiducial marker trackable pose");
 
-        m_trackablePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
+        m_fiducialMarkerPose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
     }
     else {
-        LOG_ERROR("Trackable pose instance not created");
+        LOG_ERROR("Trackable pose instance not created for fiducial marker");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (m_QRCodePose != nullptr) {
+
+        LOG_DEBUG("Set camera parameters for the QRCode trackable pose");
+
+        m_QRCodePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
+    }
+    else {
+        LOG_ERROR("Trackable pose instance not created for QRCode");
         return FrameworkReturnCode::_ERROR_;
     }
 
@@ -675,11 +722,27 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 
     LOG_DEBUG("Relocalization marker processing");
 
-    if (m_trackablePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("=> Relocalization marker succeeded");
+    if (m_fiducialMarkerPose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("=> Relocalization succeeded with fiducial marker");
         LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
         LOG_DEBUG("World pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
+    }
+
+    if (m_QRCodePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("=> Relocalization succeeded with QRCode");
+        LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
+        LOG_DEBUG("World pose: \n{}", new_pose.matrix());
+        LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
 
         if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
             // Add matrix to vector

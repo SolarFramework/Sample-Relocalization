@@ -160,8 +160,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
     // Trackable objects management
-    SRef<api::input::files::ITrackableLoader>       m_trackableLoader;
-    SRef<api::solver::pose::ITrackablePose>         m_trackablePose;
+    SRef<api::input::files::ITrackableLoader>       m_fiducialMarkerLoader;
+    SRef<api::solver::pose::ITrackablePose>         m_fiducialMarkerPose;
+    SRef<api::input::files::ITrackableLoader>       m_QRCodeLoader;
+    SRef<api::solver::pose::ITrackablePose>         m_QRCodePose;
 
     bool m_init = false;            // Indicate if initialization has been made
     bool m_cameraOK = false;        // Indicate if camera parameters has been set
