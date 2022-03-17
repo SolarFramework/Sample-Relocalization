@@ -19,6 +19,11 @@
 #include "core/Log.h"
 #include "boost/log/core/core.hpp"
 
+#include "SolARFiducialMarkerLoaderOpencv.h"
+#include "SolARFiducialMarkerPoseEstimator.h"
+#include "SolARQRCodeLoaderOpencv.h"
+#include "SolARQRCodePoseEstimatorOpencv.h"
+
 namespace xpcf  = org::bcom::xpcf;
 
 namespace SolAR {
@@ -36,9 +41,15 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         LOG_DEBUG("Components injection declaration");
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, true);
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
-        declareInjectable<api::input::files::ITrackableLoader>(m_trackableLoader, true);
-        declareInjectable<api::solver::pose::ITrackablePose>(m_trackablePose, true);
-		declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
+        declareInjectable<api::input::files::ITrackableLoader>(
+                    m_fiducialMarkerLoader, "FiducialMarkerLoader", true);
+        declareInjectable<api::solver::pose::ITrackablePose>(
+                    m_fiducialMarkerPose, "FiducialMarkerPose", true);
+        declareInjectable<api::input::files::ITrackableLoader>(
+                    m_QRCodeLoader, "QRCodeLoader", true);
+        declareInjectable<api::solver::pose::ITrackablePose>(
+                    m_QRCodePose, "QRCodePose", true);
+        declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
         LOG_DEBUG("All component injections declared");
@@ -121,26 +132,29 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_mappingService != nullptr){
+    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        LOG_DEBUG("Mapping service URL = {}",
-                 m_mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+        if (m_mappingService != nullptr){
 
-        LOG_DEBUG("Initialize the mapping service");
+            LOG_DEBUG("Mapping service URL = {}",
+                     m_mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
-        try {
-            if (m_mappingService->init() != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while initializing the mapping service");
+            LOG_DEBUG("Initialize the mapping service");
+
+            try {
+                if (m_mappingService->init() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while initializing the mapping service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+        }
+        else {
+            LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
-    }
-    else {
-        LOG_ERROR("Mapping service instance not created");
-        return FrameworkReturnCode::_ERROR_;
     }
 
     if (m_init) {
@@ -148,34 +162,68 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_SUCCESS;
     }
 
-    if ((m_trackableLoader != nullptr) && (m_trackablePose != nullptr)) {
+    if ((m_fiducialMarkerLoader != nullptr) && (m_fiducialMarkerPose != nullptr)) {
 
-        LOG_DEBUG("Load and set Trackable object");
+        LOG_DEBUG("Load and set Fiducial Marker Trackable object");
 
         SRef<Trackable> trackable;
 
-        if (m_trackableLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+        if (m_fiducialMarkerLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
         {
-            LOG_ERROR("Cannot load trackable object");
+            LOG_ERROR("Cannot load fiducial marker trackable object");
             return FrameworkReturnCode::_ERROR_;
         }
         else
         {
-            if (m_trackablePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+            if (m_fiducialMarkerPose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
             {
-                LOG_ERROR("Cannot set trackable object to trackable pose estimator");
+                LOG_ERROR("Cannot set fiducial marker trackable object to trackable pose estimator");
                 return FrameworkReturnCode::_ERROR_;
             }
         }
     }
     else {
-        LOG_ERROR("Trackable loader and pose instance not created");
+        LOG_ERROR("Trackable loader and pose instance not created for fiducial marker");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if ((m_QRCodeLoader != nullptr) && (m_QRCodePose != nullptr)) {
+
+        LOG_DEBUG("Load and set QRCode Trackable object");
+
+        SRef<Trackable> trackable;
+
+        if (m_QRCodeLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+        {
+            LOG_ERROR("Cannot load QRcode trackable object");
+            return FrameworkReturnCode::_ERROR_;
+        }
+        else
+        {
+            if (m_QRCodePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
+            {
+                LOG_ERROR("Cannot set QRCode trackable object to trackable pose estimator");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+    }
+    else {
+        LOG_ERROR("Trackable loader and pose instance not created for QRCode marker");
         return FrameworkReturnCode::_ERROR_;
     }
 
     m_init = true;
 
     return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode pipelineMode)
+{
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode)");
+
+    m_PipelineMode = pipelineMode;
+
+    return init();
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const CameraParameters & cameraParams)
@@ -206,33 +254,47 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_mappingService != nullptr){
+    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        LOG_DEBUG("Set camera parameters for the mapping service");
+        if (m_mappingService != nullptr){
 
-        try {
-            if (m_mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while setting camera parameters for the mapping service");
+            LOG_DEBUG("Set camera parameters for the mapping service");
+
+            try {
+                if (m_mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while setting camera parameters for the mapping service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+        }
+        else {
+            LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
     }
+
+    if (m_fiducialMarkerPose != nullptr) {
+
+        LOG_DEBUG("Set camera parameters for the fiducial marker trackable pose");
+
+        m_fiducialMarkerPose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
+    }
     else {
-        LOG_ERROR("Mapping service instance not created");
+        LOG_ERROR("Trackable pose instance not created for fiducial marker");
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_trackablePose != nullptr) {
+    if (m_QRCodePose != nullptr) {
 
-        LOG_DEBUG("Set camera parameters for the trackable pose");
+        LOG_DEBUG("Set camera parameters for the QRCode trackable pose");
 
-        m_trackablePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
+        m_QRCodePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
     }
     else {
-        LOG_ERROR("Trackable pose instance not created");
+        LOG_ERROR("Trackable pose instance not created for QRCode");
         return FrameworkReturnCode::_ERROR_;
     }
 
@@ -296,6 +358,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         m_confidence = 1;
         m_nb_relocalization_images = m_nbImagesBetweenRelocRequest;
         m_vector_reloc_transf_matrix.clear();
+        m_lastPose  = Transform3Df(Maths::Matrix4f::Zero());
 
         LOG_DEBUG("Empty buffers");
 
@@ -327,23 +390,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_mappingService != nullptr){
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            LOG_DEBUG("Start the mapping service");
+            if (m_mappingService != nullptr){
 
-            try {
-                if (m_mappingService->start() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while starting the mapping service");
+                LOG_DEBUG("Start the mapping service");
+
+                try {
+                    if (m_mappingService->start() != FrameworkReturnCode::_SUCCESS) {
+                        LOG_ERROR("Error while starting the mapping service");
+                        return FrameworkReturnCode::_ERROR_;
+                    }
+                }  catch (const std::exception &e) {
+                    LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+            }
+            else {
+                LOG_ERROR("Mapping service instance not created");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }
-        else {
-            LOG_ERROR("Mapping service instance not created");
-            return FrameworkReturnCode::_ERROR_;
         }
 
         if (!m_tasksStarted) {
@@ -415,23 +481,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_mappingService != nullptr){
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            LOG_DEBUG("Stop the mapping service");
+            if (m_mappingService != nullptr){
 
-            try {
-                if (m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while stopping the mapping service");
+                LOG_DEBUG("Stop the mapping service");
+
+                try {
+                    if (m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
+                        LOG_ERROR("Error while stopping the mapping service");
+                        return FrameworkReturnCode::_ERROR_;
+                    }
+                }  catch (const std::exception &e) {
+                    LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
+            }
+            else {
+                LOG_ERROR("Mapping service instance not created");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }
-        else {
-            LOG_ERROR("Mapping service instance not created");
-            return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
@@ -456,12 +525,42 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         // Check if pose is valid
         if (!pose.matrix().isZero()) {
 
+            // Store last pose received
+            m_lastPose = pose;
+
             // Give 3D transformation matrix if available
             transform3DStatus = m_T_M_W_status;
             transform3D = m_T_M_W;
             confidence = m_confidence;
 
-            if (m_T_M_W_status == NO_3DTRANSFORM) {
+            if (m_PipelineMode == RELOCALIZATION_AND_MAPPING) {
+
+                // Do relocalization first, then mapping
+
+                if (m_T_M_W_status == NO_3DTRANSFORM) {
+                    if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
+
+                        LOG_DEBUG("Push image and pose for relocalization task");
+
+                        m_dropBufferRelocalization.push(std::make_pair(image, pose));
+
+                        m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
+
+                        m_nb_relocalization_images = 0;
+                    }
+                    else
+                        m_nb_relocalization_images ++;
+                }
+                else {
+                    // Send image and pose to mapping service (if 3D transformation matrix is available)
+
+                    LOG_DEBUG("Push image and pose for mapping task");
+                    m_dropBufferMapping.push(std::make_pair(image, pose));
+                }
+            }
+            else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+
+                // Do only relocalization (for all images and poses)
                 if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
 
                     LOG_DEBUG("Push image and pose for relocalization task");
@@ -476,16 +575,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                     m_nb_relocalization_images ++;
             }
             else {
-                // Send image and pose to mapping service (if 3D transformation matrix is available)
-
-                LOG_DEBUG("Push image and pose for mapping task");
-                m_dropBufferMapping.push(std::make_pair(image, pose));
-
-                // Update 3D transformation matrix status
-                if (m_T_M_W_status == NEW_3DTRANSFORM) {
-                    LOG_DEBUG("New 3D transformation matrix sent");
-                    m_T_M_W_status = PREVIOUS_3DTRANSFORM;
-                }
+                LOG_ERROR("Unknwon pipeline processing mode");
+                return FrameworkReturnCode::_ERROR_;
             }
         }
     }
@@ -527,11 +618,54 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
     return FrameworkReturnCode::_SUCCESS;
 }
 
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
+                                SolAR::datastructure::Transform3Df & pose,
+                                const PoseType poseType) const
+{
+    if (!m_started) {
+        LOG_ERROR("Pipeline not started!");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (!m_lastPose.matrix().isZero()) {
+
+        if (poseType == DEVICE_POSE) {
+            // Return last pose in device coordinate system
+            pose = m_lastPose;
+        }
+        else if (poseType == SOLAR_POSE) {
+            // Return last pose in SolAR coordinate system
+            if (m_T_M_W_status != NO_3DTRANSFORM) {
+                pose = m_T_M_W * m_lastPose;
+            }
+            else {
+                LOG_DEBUG("No 3D transformation matrix");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+        else {
+            LOG_ERROR("Unknown pose type");
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_DEBUG("No available pose");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalization.tryPop(imagePose)) {
+    if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
+        xpcf::DelegateTask::yield();
+        return;
+    }
+
+    if (!m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
@@ -552,12 +686,24 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         LOG_DEBUG("Client original pose: \n{}", pose.matrix());
         LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-        // Add matrix to vector
-		findTransformation(new_pose * pose.inverse());       
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
     }
     else
     {
         LOG_DEBUG("Relocalization failed");
+
+        if (m_T_M_W_status == NEW_3DTRANSFORM) {
+            m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+        }
+
     }
 }
 
@@ -576,13 +722,36 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 
     LOG_DEBUG("Relocalization marker processing");
 
-    if (m_trackablePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("=> Relocalization marker succeeded");
+    if (m_fiducialMarkerPose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("=> Relocalization succeeded with fiducial marker");
         LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
         LOG_DEBUG("World pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-		// Add matrix to vector
-		findTransformation(new_pose * pose.inverse());
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
+    }
+
+    if (m_QRCodePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("=> Relocalization succeeded with QRCode");
+        LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
+        LOG_DEBUG("World pose: \n{}", new_pose.matrix());
+        LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
+
+        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
+            // Add matrix to vector
+            findTransformation(new_pose * pose.inverse());
+        }
+        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
+            m_T_M_W = new_pose * pose.inverse();
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
     }
 }
 
