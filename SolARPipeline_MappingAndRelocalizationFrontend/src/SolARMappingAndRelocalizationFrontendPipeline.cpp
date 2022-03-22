@@ -19,11 +19,6 @@
 #include "core/Log.h"
 #include "boost/log/core/core.hpp"
 
-#include "SolARFiducialMarkerLoaderOpencv.h"
-#include "SolARFiducialMarkerPoseEstimator.h"
-#include "SolARQRCodeLoaderOpencv.h"
-#include "SolARQRCodePoseEstimatorOpencv.h"
-
 namespace xpcf  = org::bcom::xpcf;
 
 namespace SolAR {
