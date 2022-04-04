@@ -44,7 +44,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
                     m_QRCodeLoader, "QRCodeLoader", true);
         declareInjectable<api::solver::pose::ITrackablePose>(
                     m_QRCodePose, "QRCodePose", true);
-        declareProperty("nbImagesBetweenRequest", m_nbImagesBetweenRelocRequest);
+        declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
         LOG_DEBUG("All component injections declared");
@@ -348,12 +348,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         LOG_DEBUG("Initialize instance attributes");
 
         // Initialize class members
-        m_T_M_W = Transform3Df::Identity();
+        set3DTransform(Transform3Df::Identity());
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
-        m_nb_relocalization_images = m_nbImagesBetweenRelocRequest;
+        m_isNeedReloc = true;
         m_vector_reloc_transf_matrix.clear();
-        m_lastPose  = Transform3Df(Maths::Matrix4f::Zero());
+        setLastPose(Transform3Df(Maths::Matrix4f::Zero()));
+        if (m_PipelineMode == RELOCALIZATION_ONLY)
+            m_maxTimeRequest = 0;
+        else
+            m_maxTimeRequest = m_nbSecondsBetweenRelocRequest;
 
         LOG_DEBUG("Empty buffers");
 
@@ -521,57 +525,24 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         if (!pose.matrix().isZero()) {
 
             // Store last pose received
-            m_lastPose = pose;
+            setLastPose(pose);
 
             // Give 3D transformation matrix if available
             transform3DStatus = m_T_M_W_status;
-            transform3D = m_T_M_W;
+            transform3D = get3DTransform();
             confidence = m_confidence;
 
-            if (m_PipelineMode == RELOCALIZATION_AND_MAPPING) {
-
-                // Do relocalization first, then mapping
-
-                if (m_T_M_W_status == NO_3DTRANSFORM) {
-                    if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
-
-                        LOG_DEBUG("Push image and pose for relocalization task");
-
-                        m_dropBufferRelocalization.push(std::make_pair(image, pose));
-
-                        m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
-
-                        m_nb_relocalization_images = 0;
-                    }
-                    else
-                        m_nb_relocalization_images ++;
-                }
-                else {
-                    // Send image and pose to mapping service (if 3D transformation matrix is available)
-
-                    LOG_DEBUG("Push image and pose for mapping task");
-                    m_dropBufferMapping.push(std::make_pair(image, pose));
-                }
+            // Relocalization
+            if (checkNeedReloc()){
+                LOG_DEBUG("Push image and pose for relocalization task");
+                m_dropBufferRelocalization.push(std::make_pair(image, pose));
+                m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
             }
-            else if (m_PipelineMode == RELOCALIZATION_ONLY) {
 
-                // Do only relocalization (for all images and poses)
-                if (m_nb_relocalization_images == m_nbImagesBetweenRelocRequest) {
-
-                    LOG_DEBUG("Push image and pose for relocalization task");
-
-                    m_dropBufferRelocalization.push(std::make_pair(image, pose));
-
-                    m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
-
-                    m_nb_relocalization_images = 0;
-                }
-                else
-                    m_nb_relocalization_images ++;
-            }
-            else {
-                LOG_ERROR("Unknwon pipeline processing mode");
-                return FrameworkReturnCode::_ERROR_;
+            // Mapping if the pipeline mode is mapping and found 3D Transform
+            if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
+                LOG_DEBUG("Push image and pose for mapping task");
+                m_dropBufferMapping.push(std::make_pair(image, pose));
             }
         }
     }
@@ -594,7 +565,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(
                                             TransformStatus & transform3DStatus,
                                             SolAR::datastructure::Transform3Df & transform3D,
-                                            float_t & confidence) const
+                                            float_t & confidence)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest");
 
@@ -602,7 +573,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
 
         // Give 3D transformation matrix if available
         transform3DStatus = m_T_M_W_status;
-        transform3D = m_T_M_W;
+        if (m_T_M_W_status == NEW_3DTRANSFORM) {
+            m_T_M_W_status = PREVIOUS_3DTRANSFORM;
+        }
+        transform3D = get3DTransform();
         confidence = m_confidence;
     }
     else {
@@ -621,9 +595,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
         LOG_ERROR("Pipeline not started!");
         return FrameworkReturnCode::_ERROR_;
     }
-
     if (!m_lastPose.matrix().isZero()) {
-
+        std::unique_lock<std::mutex> lock(m_mutexLastPose);
         if (poseType == DEVICE_POSE) {
             // Return last pose in device coordinate system
             pose = m_lastPose;
@@ -654,12 +627,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
-
-    if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
-        xpcf::DelegateTask::yield();
-        return;
-    }
-
     if (!m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
@@ -681,32 +648,14 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
         LOG_DEBUG("Client original pose: \n{}", pose.matrix());
         LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-
-        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
-            // Add matrix to vector
-            findTransformation(new_pose * pose.inverse());
-        }
-        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
-            m_T_M_W = new_pose * pose.inverse();
-            m_T_M_W_status = NEW_3DTRANSFORM;
-        }
-    }
-    else
-    {
-        LOG_DEBUG("Relocalization failed");
-
-        if (m_T_M_W_status == NEW_3DTRANSFORM) {
-            m_T_M_W_status = PREVIOUS_3DTRANSFORM;
-        }
-
+        findTransformation(new_pose * pose.inverse());
     }
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
-
-    if ((m_T_M_W_status != NO_3DTRANSFORM) || !m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
+    if (!m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
@@ -722,15 +671,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
         LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
         LOG_DEBUG("World pose: \n{}", new_pose.matrix());
 		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-
-        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
-            // Add matrix to vector
-            findTransformation(new_pose * pose.inverse());
-        }
-        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
-            m_T_M_W = new_pose * pose.inverse();
-            m_T_M_W_status = NEW_3DTRANSFORM;
-        }
+        findTransformation(new_pose * pose.inverse());
     }
 
     if (m_QRCodePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
@@ -738,15 +679,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
         LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
         LOG_DEBUG("World pose: \n{}", new_pose.matrix());
         LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-
-        if (m_PipelineMode == RELOCALIZATION_AND_MAPPING ) {
-            // Add matrix to vector
-            findTransformation(new_pose * pose.inverse());
-        }
-        else if (m_PipelineMode == RELOCALIZATION_ONLY) {
-            m_T_M_W = new_pose * pose.inverse();
-            m_T_M_W_status = NEW_3DTRANSFORM;
-        }
+        findTransformation(new_pose * pose.inverse());
     }
 }
 
@@ -766,15 +699,25 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     image->setImageEncoding(Image::ENCODING_NONE);
 
     LOG_DEBUG("Send image and pose to mapping service");
-
-    if (m_mappingService->mappingProcessRequest(image, m_T_M_W * pose) != SolAR::FrameworkReturnCode::_SUCCESS) {
+    Transform3Df updatedT_M_W;
+    MappingStatus mappingStatus;
+    Transform3Df curT_M_W = get3DTransform();
+    if (m_mappingService->mappingProcessRequest(image, pose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("Mapping status: {}", mappingStatus);
+        if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
+            LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
+            set3DTransform(updatedT_M_W);
+            m_T_M_W_status = NEW_3DTRANSFORM;
+        }
+    }
+    else {
         LOG_DEBUG("Mapping processing request failed");
     }
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform3Df transform)
 {
-	std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutexFindTransform);
 	m_vector_reloc_transf_matrix.push_back(transform);
 	// find mean transformation
 	if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
@@ -794,11 +737,45 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
 		rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
 			* Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
 			* Maths::AngleAxisf(eulers[2], Vector3f::UnitZ());
-		m_T_M_W.linear() = rot;
-		m_T_M_W.translation() = translations;
-		m_T_M_W_status = NEW_3DTRANSFORM;
-		LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", m_T_M_W.matrix());
+        Transform3Df transform3D;
+        transform3D.linear() = rot;
+        transform3D.translation() = translations;
+        LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", transform3D.matrix());
+        set3DTransform(transform3D);
+        m_T_M_W_status = NEW_3DTRANSFORM;
+        m_relocTimer.restart();
+        m_isNeedReloc = false;
+        m_vector_reloc_transf_matrix.clear();
 	}
+}
+
+/// @brief check if need to relocalize
+bool SolARMappingAndRelocalizationFrontendPipeline::checkNeedReloc()
+{
+    if (!m_isNeedReloc && (m_relocTimer.elapsed() > m_maxTimeRequest * 1000))
+        m_isNeedReloc = true;
+    return m_isNeedReloc;
+}
+
+/// @brief get 3D transform
+Transform3Df SolARMappingAndRelocalizationFrontendPipeline::get3DTransform()
+{
+    std::unique_lock<std::mutex> lock(m_mutexTransform);
+    return m_T_M_W;
+}
+
+/// @brief set 3D transform
+void SolARMappingAndRelocalizationFrontendPipeline::set3DTransform(const Transform3Df& transform3D)
+{
+    std::unique_lock<std::mutex> lock(m_mutexTransform);
+    m_T_M_W = transform3D;
+}
+
+/// @brief set last pose
+void SolARMappingAndRelocalizationFrontendPipeline::setLastPose(const Transform3Df& lastPose)
+{
+    std::unique_lock<std::mutex> lock(m_mutexLastPose);
+    m_lastPose = lastPose;
 }
 
 } // namespace RELOCALIZATION
