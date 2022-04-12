@@ -34,8 +34,10 @@
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
 #include "core/Log.h"
-#include "api/input/files/ITrackableLoader.h"
-#include "api/solver/pose/ITrackablePose.h"
+#include "api/input/files/IWorldGraphLoader.h"
+#include "api/features/I2DTrackablesDetector.h"
+#include "api/geom/IProject.h"
+#include "api/solver/pose/I3DTransformFinderFrom2D3D.h"
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -52,12 +54,14 @@ namespace RELOCALIZATION {
 
 /**
  * @class SolARRelocalizationMarkerPipeline
- * @brief Implementation of a relocalization pipeline based on marker (fiducial or QR code)
+ * @brief Implementation of a relocalization pipeline based on multi markers (fiducial or QR code)
  * <TT>UUID: c61aeaf1-2126-4a85-8d4b-5358ae6a32d0</TT>
  *
  * @SolARComponentInjectablesBegin
- * @SolARComponentInjectable{SolAR::api::input::files::ITrackableLoader}
- * @SolARComponentInjectable{SolAR::api::solver::pose::ITrackablePose}
+ * @SolARComponentInjectable{SolAR::api::input::files::IWorldGraphLoader}
+ * @SolARComponentInjectable{SolAR::api::features::I2DTrackablesDetector}
+ * @SolARComponentInjectable{SolAR::api::geom::IProject}
+ * @SolARComponentInjectable{SolAR::api::solver::pose::I3DTransformFinderFrom2D3D}
  * @SolARComponentInjectablesEnd
  *
  */
@@ -102,17 +106,40 @@ public:
     /// @param[out] confidence: the confidence score
     /// @return FrameworkReturnCode::_SUCCESS if the processing is successful, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                 SolAR::datastructure::Transform3Df& pose, float_t & confidence) override;
+                                                 SolAR::datastructure::Transform3Df& pose,
+                                                 float_t & confidence) override;
+
+    /// @brief Request to the relocalization pipeline to get the map
+    /// @param[out] map the output map
+    /// @return FrameworkReturnCode::_SUCCESS if the map is available, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getMapRequest(SRef<SolAR::datastructure::Map> & map) const override {return FrameworkReturnCode::_NOT_IMPLEMENTED; };
+
+private:
+    /// @brief Fiducial markers detection
+    void fiducialMarkersDetection(const SRef<SolAR::datastructure::Image> image,
+                                  std::vector<std::vector<SolAR::datastructure::Point2Df>> & corners);
+
+    /// @brief QR codes detection
+    void qrCodesDetection(const SRef<SolAR::datastructure::Image> image,
+                          std::vector<std::vector<SolAR::datastructure::Point2Df>> & corners);
 
 private:
     // Camera parameters
-    CamCalibration                                          m_calibration;
-    CamDistortion                                           m_distortion;
-	bool													m_cameraOK = false;
-	bool													m_initOK = false;
+    CamCalibration                                              m_calibration;
+    CamDistortion                                               m_distortion;
+    bool                                                        m_cameraOK = false;
+    bool                                                        m_initOK = false;
+    float                                                       m_maxReprojError = 2.f;
+    int                                                         m_nbFiducialMarkers;
+    int                                                         m_nbQRCodes;
+    std::vector<std::vector<SolAR::datastructure::Point3Df>>	m_QRCodes3DPoints;
+    std::vector<std::vector<SolAR::datastructure::Point3Df>>	m_fiducials3DPoints;
 	// Components
-    SRef<input::files::ITrackableLoader>                    m_trackableLoader;
-    SRef<solver::pose::ITrackablePose>						m_poseEstimator;
+    SRef<input::files::IWorldGraphLoader>                       m_worldGraphLoader;
+    SRef<SolAR::api::solver::pose::I3DTransformFinderFrom2D3D>	m_pnp;
+    SRef<SolAR::api::features::I2DTrackablesDetector>           m_QRCodesDetector;
+    SRef<SolAR::api::features::I2DTrackablesDetector>           m_fiducialMarkersDetector;
+    SRef<SolAR::api::geom::IProject>							m_projector;
 };
 
 } // namespace RELOCALIZATION

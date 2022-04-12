@@ -6,7 +6,8 @@ QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
 TARGET = SolARPipelineTest_RelocalizationMarker
-VERSION=0.10.0
+VERSION=0.11.0
+PROJECTDEPLOYDIR = $${PWD}/../../..
 
 DEFINES += MYVERSION=$${VERSION}
 CONFIG += c++1z
@@ -15,13 +16,11 @@ CONFIG += console
 include(findremakenrules.pri)
 
 CONFIG(debug,debug|release) {
-    TARGETDEPLOYDIR = $${PWD}/../../../bin/Debug
     DEFINES += _DEBUG=1
     DEFINES += DEBUG=1
 }
 
 CONFIG(release,debug|release) {
-    TARGETDEPLOYDIR = $${PWD}/../../../bin/Release
     DEFINES += _NDEBUG=1
     DEFINES += NDEBUG=1
 }
@@ -41,6 +40,9 @@ SOURCES += \
 unix {
     LIBS += -ldl
     QMAKE_CXXFLAGS += -DBOOST_LOG_DYN_LINK
+	
+	# Avoids adding install steps manually. To be commented to have a better control over them.
+    QMAKE_POST_LINK += "make install install_deps"
 }
 
 linux {
@@ -66,10 +68,9 @@ win32 {
 
 config_files.path = $${TARGETDEPLOYDIR}
 config_files.files= $$files($${PWD}/SolARPipelineTest_RelocalizationMarker_conf.xml) \
-					$${PWD}/qrcode.yml \ 
-					$${PWD}/qrcode.png \ 
-					$${PWD}/fiducialMarker.yml \ 
-					$${PWD}/FiducialMarker.gif \ 
+					$${PWD}/qrcodes.png \ 					
+					$${PWD}/FiducialMarkers.png \ 
+					$${PWD}/markers.json \ 
                     $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
 

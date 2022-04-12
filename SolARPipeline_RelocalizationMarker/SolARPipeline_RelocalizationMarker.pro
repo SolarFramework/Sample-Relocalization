@@ -8,13 +8,15 @@ QMAKE_PROJECT_DEPTH = 0
 INSTALLSUBDIR = SolARBuild
 TARGET = SolARPipelineRelocalizationMarker
 FRAMEWORK = $${TARGET}
-VERSION=0.10.0
+VERSION=0.11.0
 
 DEFINES += MYVERSION=$${VERSION}
 DEFINES += TEMPLATE_LIBRARY
 CONFIG += c++1z
 
 include(findremakenrules.pri)
+
+include(../manualincludepath.pri)
 
 CONFIG(debug,debug|release) {
     DEFINES += _DEBUG=1
@@ -43,6 +45,11 @@ DEFINES += "_BCOM_SHARED=__declspec(dllexport)"
 INCLUDEPATH += interfaces/
 
 include (SolARPipeline_RelocalizationMarker.pri)
+
+unix {
+    # Avoids adding install steps manually. To be commented to have a better control over them.
+    QMAKE_POST_LINK += "make install"
+}
 
 unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers
