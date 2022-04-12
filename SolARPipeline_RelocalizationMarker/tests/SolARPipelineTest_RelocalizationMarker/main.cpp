@@ -35,7 +35,6 @@ int main(int argc, char *argv[]){
 #endif
 
     LOG_ADD_LOG_TO_CONSOLE();
-    LOG_SET_DEBUG_LEVEL();
     try {
         LOG_INFO("Get component manager instance");
         SRef<xpcf::IComponentManager> componentMgr = xpcf::getComponentManagerInstance();
