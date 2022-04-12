@@ -124,10 +124,12 @@ public:
     FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
                                                  SolAR::datastructure::Transform3Df& pose, float_t & confidence) override;
 
-private:
+	/// @brief Request to the relocalization pipeline to get the map
+	/// @param[out] map the output map
+	/// @return FrameworkReturnCode::_SUCCESS if the map is available, else FrameworkReturnCode::_ERROR_
+	FrameworkReturnCode getMapRequest(SRef<SolAR::datastructure::Map> & map) const override;
 
-    /// @brief Initialize class members
-    void initClassMembers();
+private:
 
     // 2D-3D correspondences finder function
 	bool fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D);
@@ -135,8 +137,9 @@ private:
 private:
 
 	// State flag of the pipeline
-    bool m_initOK = false, m_cameraOK = false;
-    int m_minNbInliers;
+	bool m_initOK = false, m_cameraOK = false, m_started = false, m_isMap = false;
+    int m_minNbInliers;	
+	int m_nbRelocFails;
 
     // Camera parameters
     CamCalibration                                          m_calibration;

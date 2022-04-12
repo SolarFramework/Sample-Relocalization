@@ -1,9 +1,9 @@
 @echo off
 SETLOCAL EnableDelayedExpansion
 
-SET version=0.10.0
+SET version=0.11.0
 
-SET filename=SolAR_Relocalization_%version%
+SET filename=SolARSample_Relocalization_%version%
 SET arg1=%1
 
 IF NOT "!arg1!"=="" (SET filename=%arg1%)
@@ -19,16 +19,16 @@ echo "**** Bundle dependencies in bin folder"
  FOR /D /R %%d IN (SolARSample*) DO (
     For %%f IN (%%~fd\*_conf.xml) DO (
       echo "** Bundle sample configuration file %%f"
-      remaken bundleXpcf "%%f" -d ./bin/Release -s modules
-      remaken bundleXpcf "%%f" -d ./bin/Debug -s modules -c debug
+      remaken bundleXpcf "%%f" -d ./bin/x86_64/shared/release -s modules
+      remaken bundleXpcf "%%f" -d ./bin/x86_64/shared/debug -s modules -c debug
    )
 )
 
 FOR /D /R %%d IN (SolARPipeline*) DO (
    For %%f IN (%%~fd\*_conf.xml) DO (
       echo "** Bundle sample configuration file %%f"
-      remaken bundleXpcf "%%f" -d ./bin/Release -s modules
-      remaken bundleXpcf "%%f" -d ./bin/Debug -s modules -c debug
+      remaken bundleXpcf "%%f" -d ./bin/x86_64/shared/release -s modules
+      remaken bundleXpcf "%%f" -d ./bin/x86_64/shared/debug -s modules -c debug
    )
 )
 
@@ -38,8 +38,8 @@ echo "**** Zip bundles"
 "7z.exe" a -tzip bin\%filename%_release.zip README.md
 "7z.exe" a -tzip bin\%filename%_debug.zip installData.bat
 "7z.exe" a -tzip bin\%filename%_release.zip installData.bat
-"7z.exe" a -tzip bin\%filename%_debug.zip bin\Debug
-"7z.exe" a -tzip bin\%filename%_release.zip bin\Release
+"7z.exe" a -tzip bin\%filename%_debug.zip bin\x86_64\shared\debug
+"7z.exe" a -tzip bin\%filename%_release.zip bin\x86_64\shared\release
 
 "sh.exe" bundleDataConfigFiles.sh windows bin\%filename%_release.zip bin\%filename%_debug.zip
 
