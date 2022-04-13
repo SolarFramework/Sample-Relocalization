@@ -78,7 +78,7 @@
     </module>
 	
 	<module uuid="28b89d39-41bd-451d-b19e-d25a3d7c5797" name="SolARModuleTools" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleTools/0.11.0/lib/x86_64/shared" description="Module Tools">
-		<component uuid="31fa26d6-9744-4522-85fa-fc2baafbe397" name="SolAFiducialMarkersDetector" description="SolAFiducialMarkersDetector">
+		<component uuid="31fa26d6-9744-4522-85fa-fc2baafbe397" name="SolARFiducialMarkersDetector" description="SolARFiducialMarkersDetector">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="607d0b0d-766d-4ff2-9b72-45c555f9726f" name="I2DTrackablesDetector" description="I2DTrackablesDetector"/>
 		</component>
@@ -105,7 +105,7 @@
 		<injects>		
 			<inject to="SolARRelocalizationMarkerPipeline">
 				<bind interface="I2DTrackablesDetector" to="SolARQRCodesDetectorOpencv" name="QRcode" properties="QRcodeProperties" range="default|all"/>
-				<bind interface="I2DTrackablesDetector" to="SolAFiducialMarkersDetector" name="Fiducial" properties="FiducialProperties" range="default|all"/>
+				<bind interface="I2DTrackablesDetector" to="SolARFiducialMarkersDetector" name="Fiducial" properties="FiducialProperties" range="default|all"/>
 			</inject>
 		</injects>		
 	</factory>
@@ -126,7 +126,7 @@
 		<configure component="SolARWorldGraphLoader">
             <property name="filePath" type="string" value="markers.json"/>
         </configure>
-		<configure component="SolAFiducialMarkersDetector">
+		<configure component="SolARFiducialMarkersDetector" name="FiducialProperties">
             <property name="nbThreshold" type="int" value="3"/>
 			<property name="minThreshold" type="int" value="-1"/>
 			<property name="maxThreshold" type="int" value="220"/>
