@@ -33,17 +33,10 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
     try {
         declareInterface<api::pipeline::IAsyncRelocalizationPipeline>(this);
 
-        LOG_DEBUG("Components injection declaration");
-        declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, true);
+        LOG_DEBUG("Components injection declaration");        
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
-        declareInjectable<api::input::files::ITrackableLoader>(
-                    m_fiducialMarkerLoader, "FiducialMarkerLoader", true);
-        declareInjectable<api::solver::pose::ITrackablePose>(
-                    m_fiducialMarkerPose, "FiducialMarkerPose", true);
-        declareInjectable<api::input::files::ITrackableLoader>(
-                    m_QRCodeLoader, "QRCodeLoader", true);
-        declareInjectable<api::solver::pose::ITrackablePose>(
-                    m_QRCodePose, "QRCodePose", true);
+        declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, "Map", true);
+        declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationMarkerService, "Marker", true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
@@ -127,6 +120,28 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
         return FrameworkReturnCode::_ERROR_;
     }
 
+    if (m_relocalizationMarkerService != nullptr){
+
+        LOG_DEBUG("Relocalization marker service URL = {}",
+                 m_relocalizationMarkerService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+
+        LOG_DEBUG("Initialize the relocalization marker service");
+
+        try {
+            if (m_relocalizationMarkerService->init() != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Error while initializing the relocalization marker service");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }  catch (const std::exception &e) {
+            LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_ERROR("Relocalization marker service instance not created");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
         if (m_mappingService != nullptr){
@@ -155,57 +170,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     if (m_init) {
         LOG_WARNING("Pipeline has already been initialized");
         return FrameworkReturnCode::_SUCCESS;
-    }
-
-    if ((m_fiducialMarkerLoader != nullptr) && (m_fiducialMarkerPose != nullptr)) {
-
-        LOG_DEBUG("Load and set Fiducial Marker Trackable object");
-
-        SRef<Trackable> trackable;
-
-        if (m_fiducialMarkerLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
-        {
-            LOG_ERROR("Cannot load fiducial marker trackable object");
-            return FrameworkReturnCode::_ERROR_;
-        }
-        else
-        {
-            if (m_fiducialMarkerPose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
-            {
-                LOG_ERROR("Cannot set fiducial marker trackable object to trackable pose estimator");
-                return FrameworkReturnCode::_ERROR_;
-            }
-        }
-    }
-    else {
-        LOG_ERROR("Trackable loader and pose instance not created for fiducial marker");
-        return FrameworkReturnCode::_ERROR_;
-    }
-
-    if ((m_QRCodeLoader != nullptr) && (m_QRCodePose != nullptr)) {
-
-        LOG_DEBUG("Load and set QRCode Trackable object");
-
-        SRef<Trackable> trackable;
-
-        if (m_QRCodeLoader->loadTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
-        {
-            LOG_ERROR("Cannot load QRcode trackable object");
-            return FrameworkReturnCode::_ERROR_;
-        }
-        else
-        {
-            if (m_QRCodePose->setTrackable(trackable) != FrameworkReturnCode::_SUCCESS)
-            {
-                LOG_ERROR("Cannot set QRCode trackable object to trackable pose estimator");
-                return FrameworkReturnCode::_ERROR_;
-            }
-        }
-    }
-    else {
-        LOG_ERROR("Trackable loader and pose instance not created for QRCode marker");
-        return FrameworkReturnCode::_ERROR_;
-    }
+    }    
 
     m_init = true;
 
@@ -249,6 +214,25 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
+    if (m_relocalizationMarkerService != nullptr){
+
+        LOG_DEBUG("Set camera parameters for the relocalization marker service");
+
+        try {
+            if (m_relocalizationMarkerService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Error while setting camera parameters for the relocalization marker service");
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }  catch (const std::exception &e) {
+            LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_ERROR("Relocalization marker service instance not created");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
         if (m_mappingService != nullptr){
@@ -269,28 +253,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
             LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
-    }
-
-    if (m_fiducialMarkerPose != nullptr) {
-
-        LOG_DEBUG("Set camera parameters for the fiducial marker trackable pose");
-
-        m_fiducialMarkerPose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
-    }
-    else {
-        LOG_ERROR("Trackable pose instance not created for fiducial marker");
-        return FrameworkReturnCode::_ERROR_;
-    }
-
-    if (m_QRCodePose != nullptr) {
-
-        LOG_DEBUG("Set camera parameters for the QRCode trackable pose");
-
-        m_QRCodePose->setCameraParameters(cameraParams.intrinsic, cameraParams.distortion);
-    }
-    else {
-        LOG_ERROR("Trackable pose instance not created for QRCode");
-        return FrameworkReturnCode::_ERROR_;
     }
 
     m_cameraOK = true;
@@ -389,6 +351,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
             return FrameworkReturnCode::_ERROR_;
         }
 
+        if (m_relocalizationMarkerService != nullptr){
+
+            LOG_DEBUG("Start the relocalization marker service");
+
+            try {
+                if (m_relocalizationMarkerService->start() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while starting the relocalization marker service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+        else {
+            LOG_ERROR("Relocalization marker service instance not created");
+            return FrameworkReturnCode::_ERROR_;
+        }
+
+
         if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
             if (m_mappingService != nullptr){
@@ -477,6 +459,25 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
         }
         else {
             LOG_ERROR("Relocalization service instance not created");
+            return FrameworkReturnCode::_ERROR_;
+        }
+
+        if (m_relocalizationMarkerService != nullptr){
+
+            LOG_DEBUG("Stop the relocalization marker service");
+
+            try {
+                if (m_relocalizationMarkerService->stop() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while stopping the relocalization marker service");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+            }  catch (const std::exception &e) {
+                LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+                return FrameworkReturnCode::_ERROR_;
+            }
+        }
+        else {
+            LOG_ERROR("Relocalization marker service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
 
@@ -662,22 +663,19 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 
     SRef<Image> image = imagePose.first;
     Transform3Df pose = imagePose.second;
+
+    // No image encoding to send to relocalization service
+    image->setImageEncoding(Image::ENCODING_NONE);
+
+    LOG_DEBUG("Send image and pose to relocalization marker service");
+
     Transform3Df new_pose;
+    float confidence;
 
-    LOG_DEBUG("Relocalization marker processing");
-
-    if (m_fiducialMarkerPose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("=> Relocalization succeeded with fiducial marker");
-        LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
-        LOG_DEBUG("World pose: \n{}", new_pose.matrix());
-		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-        findTransformation(new_pose * pose.inverse());
-    }
-
-    if (m_QRCodePose->estimate(image, new_pose) == FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("=> Relocalization succeeded with QRCode");
-        LOG_DEBUG("Hololens pose: \n{}", pose.matrix());
-        LOG_DEBUG("World pose: \n{}", new_pose.matrix());
+    if (m_relocalizationMarkerService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("Relocalization Marker succeeded");
+        LOG_DEBUG("Client original pose: \n{}", pose.matrix());
+        LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
         LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
         findTransformation(new_pose * pose.inverse());
     }

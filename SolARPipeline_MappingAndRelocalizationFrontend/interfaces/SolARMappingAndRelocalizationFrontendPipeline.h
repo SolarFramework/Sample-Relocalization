@@ -34,8 +34,6 @@
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/pipeline/IMappingPipeline.h"
-#include "api/input/files/ITrackableLoader.h"
-#include "api/solver/pose/ITrackablePose.h"
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
@@ -171,12 +169,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // Relocalization and mapping services
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
+    SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
-    // Trackable objects management
-    SRef<api::input::files::ITrackableLoader>       m_fiducialMarkerLoader;
-    SRef<api::solver::pose::ITrackablePose>         m_fiducialMarkerPose;
-    SRef<api::input::files::ITrackableLoader>       m_QRCodeLoader;
-    SRef<api::solver::pose::ITrackablePose>         m_QRCodePose;
 
     bool m_init = false;            // Indicate if initialization has been made
     bool m_cameraOK = false;        // Indicate if camera parameters has been set

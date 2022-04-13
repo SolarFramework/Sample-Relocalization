@@ -55,6 +55,10 @@ SolARRelocalizationMarkerPipeline::~SolARRelocalizationMarkerPipeline()
 FrameworkReturnCode SolARRelocalizationMarkerPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationMarkerPipeline::init");
+    if (m_initOK) {
+        LOG_WARNING("SolARRelocalizationMarkerPipeline has already been initialized");
+        return FrameworkReturnCode::_SUCCESS;
+    }
     // load trackables of the world graph
     std::vector<SRef<Trackable>> trackables;
     if (m_worldGraphLoader->load(trackables) == FrameworkReturnCode::_ERROR_) {
