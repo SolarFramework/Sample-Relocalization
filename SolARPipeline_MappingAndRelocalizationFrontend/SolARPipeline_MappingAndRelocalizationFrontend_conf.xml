@@ -141,7 +141,7 @@
             <property name="maxReprojError" type="float" value="2.5"/>
         </configure>
         <configure component="SolARQRCodeLoaderOpencv">
-            <property name="filePath" type="string" value="../../data/data_hololens/qrcode_artwin.yml"  description="Path of the .yml file describing the QRCode marker."/>
+            <property name="filePath" type="string" value="../../../../data/data_hololens/qrcode_artwin.yml"  description="Path of the .yml file describing the QRCode marker."/>
         </configure>
         <configure component="SolARImageFilterBinaryOpencv">
             <property name="min" type="int" value="-1" description="minimum threshold (-1 to automatically compute it on the global image"/>
