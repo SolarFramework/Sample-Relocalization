@@ -1,6 +1,1 @@
-SolARModuleOpenCV|0.11.0|SolARModuleOpenCV|SolARBuild@github|https://github.com/SolarFramework/SolarModuleOpenCV/releases/download
-SolARModuleOpenGL|0.11.0|SolARModuleOpenGL|SolARBuild@github|https://github.com/SolarFramework/SolarModuleOpenGL/releases/download
-SolARModuleTools|0.11.0|SolARModuleTools|SolARBuild@github|https://github.com/SolarFramework/SolARModuleTools/releases/download
-SolARModuleFBOW|0.11.0|SolARModuleFBOW|SolARBuild@github|https://github.com/SolarFramework/SolARModuleFBOW/releases/download
-SolARPipelineRelocalization|0.11.0|SolARPipelineRelocalization|SolARBuild@github|https://github.com/SolarFramework/Sample-Relocalization/releases/download
-
+SolARFramework|0.11.0|SolARFramework|SolARBuild@github|https://github.com/SolarFramework/SolarFramework/releases/download|shared|
