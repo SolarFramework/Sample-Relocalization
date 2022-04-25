@@ -701,7 +701,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     MappingStatus mappingStatus;
     Transform3Df curT_M_W = get3DTransform();
     if (m_mappingService->mappingProcessRequest(image, pose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("Mapping status: {}", mappingStatus);
+        LOG_DEBUG("Mapping status: {}", mappingStatus);
         if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
             LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
             set3DTransform(updatedT_M_W);
