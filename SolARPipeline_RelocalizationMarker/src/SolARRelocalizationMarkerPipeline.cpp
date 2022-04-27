@@ -100,11 +100,11 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::init()
         LOG_INFO("Number of QRcode markers: {}", m_nbQRCodes);
         LOG_DEBUG("Number of floating fiducial markers: {}", nbFloatingFiducials);
         LOG_DEBUG("Number of floating QRcode markers: {}", nbFloatingQRCodes);
-        if (m_fiducialMarkersDetector->setTrackables(fiducialMarkers) != FrameworkReturnCode::_SUCCESS) {
+        if ((m_nbFiducialMarkers > 0) && (m_fiducialMarkersDetector->setTrackables(fiducialMarkers) != FrameworkReturnCode::_SUCCESS)) {
             LOG_ERROR("Cannot set fiducial marker to detector");
             return FrameworkReturnCode::_ERROR_;
         }
-        if (m_QRCodesDetector->setTrackables(qrCodes) != FrameworkReturnCode::_SUCCESS) {
+        if ((m_nbQRCodes > 0) && (m_QRCodesDetector->setTrackables(qrCodes) != FrameworkReturnCode::_SUCCESS)) {
             LOG_ERROR("Cannot set QR codes to detector");
             return FrameworkReturnCode::_ERROR_;
         }
@@ -237,13 +237,15 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::relocalizeProcessRequest(
 void SolARRelocalizationMarkerPipeline::fiducialMarkersDetection(const SRef<SolAR::datastructure::Image> image,
                                                                  std::vector<std::vector<SolAR::datastructure::Point2Df>> & corners)
 {
-    m_fiducialMarkersDetector->detect(image, corners);
+    if (m_nbFiducialMarkers > 0)
+        m_fiducialMarkersDetector->detect(image, corners);
 }
 
 void SolARRelocalizationMarkerPipeline::qrCodesDetection(const SRef<SolAR::datastructure::Image> image,
                                                          std::vector<std::vector<SolAR::datastructure::Point2Df>> & corners)
 {
-    m_QRCodesDetector->detect(image, corners);
+    if (m_nbQRCodes > 0)
+        m_QRCodesDetector->detect(image, corners);
 }
 
 } // namespace RELOCALIZATION
