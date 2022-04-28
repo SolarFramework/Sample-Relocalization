@@ -37,6 +37,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, "Map", true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationMarkerService, "Marker", true);
+        declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapupdateService, true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
@@ -623,6 +624,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
     }
 
     return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() const
+{
+    return m_mapupdateService->resetMap();
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()

@@ -257,6 +257,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             }
             else{
                 LOG_DEBUG("Cannot get submap");
+                if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Cannot stop Map Update pipeline");
+                }
                 return FrameworkReturnCode::_ERROR_;
             }
             if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
