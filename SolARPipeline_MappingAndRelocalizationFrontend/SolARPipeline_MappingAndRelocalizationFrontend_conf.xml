@@ -120,7 +120,10 @@
         </configure>
         <configure component="IRelocalizationPipeline_grpcProxy">
                 <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50052"/>
-                <!--property name="channelUrl" access="rw" type="string" value="10.50.1.152:31889"/-->
+                <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        </configure>
+        <configure component="IMapUpdatePipeline_grpcProxy">
+                <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50053"/>
                 <property name="channelCredentials" access="rw" type="uint" value="0"/>
         </configure>
 

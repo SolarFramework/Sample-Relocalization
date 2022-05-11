@@ -34,12 +34,12 @@
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/pipeline/IMappingPipeline.h"
-#include "api/input/files/ITrackableLoader.h"
-#include "api/solver/pose/ITrackablePose.h"
+#include "api/pipeline/IMapUpdatePipeline.h"
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
 #include "core/Log.h"
+#include "core/Timer.h"
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -129,7 +129,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the 3D transform is available, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode get3DTransformRequest(TransformStatus & transform3DStatus,
                                               SolAR::datastructure::Transform3Df & transform3D,
-                                              float_t & confidence) const override;
+                                              float_t & confidence) override;
 
     /// @brief Return the last pose processed by the pipeline
     /// @param[out] pose: the last pose if available
@@ -139,6 +139,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the last pose is available, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode getLastPose(SolAR::datastructure::Transform3Df & pose,
                                     const PoseType poseType = SOLAR_POSE) const override;
+
+    /// @brief Reset the map stored by the map update pipeline
+    /// @return FrameworkReturnCode::_SUCCESS if the map is correctly reset, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode resetMap() const override;
 
   private:
 
@@ -154,16 +158,25 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 	/// @brief find transformation matrix
 	void findTransformation(Transform3Df transform);
 
+    /// @brief check if need to relocalize
+    bool checkNeedReloc();
+
+    /// @brief get 3D transform
+    Transform3Df get3DTransform();
+
+    /// @brief set 3D transform
+    void set3DTransform(const Transform3Df& transform3D);
+
+    /// @brief set last pose
+    void setLastPose(const Transform3Df& lastPose);
+
   private:
 
-    // Relocalization and mapping services
+    // Relocalization, mapping and map update services
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
+    SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
-    // Trackable objects management
-    SRef<api::input::files::ITrackableLoader>       m_fiducialMarkerLoader;
-    SRef<api::solver::pose::ITrackablePose>         m_fiducialMarkerPose;
-    SRef<api::input::files::ITrackableLoader>       m_QRCodeLoader;
-    SRef<api::solver::pose::ITrackablePose>         m_QRCodePose;
+    SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
 
     bool m_init = false;            // Indicate if initialization has been made
     bool m_cameraOK = false;        // Indicate if camera parameters has been set
@@ -181,21 +194,25 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
-    Transform3Df m_T_M_W = Transform3Df::Identity();
-    TransformStatus m_T_M_W_status = NO_3DTRANSFORM;
+    SolAR::datastructure::Transform3Df  m_T_M_W;
+    std::mutex                          m_mutexTransform;
+    std::atomic<TransformStatus>        m_T_M_W_status;
     float_t m_confidence = 0;
 
-	int m_nbImagesBetweenRelocRequest = 5;
-	int m_nbRelocTransformMatrixRequest = 5;
-    int8_t m_nb_relocalization_images; // Nb images since last relocalization    
+    int m_nbRelocTransformMatrixRequest = 3;
+    int m_maxTimeRequest;
+    int m_nbSecondsBetweenRelocRequest = 30;
+    std::atomic_bool m_isNeedReloc;
+    Timer m_relocTimer;
 
     // Vector of 3D transformation matrix given by Relocalization service
     std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
 
     // Last pose received
-    SolAR::datastructure::Transform3Df m_lastPose;
+    SolAR::datastructure::Transform3Df  m_lastPose;
+    mutable std::mutex                  m_mutexLastPose;
 
-	std::mutex m_mutex;
+    std::mutex                          m_mutexFindTransform;
 };
 
 } // namespace RELOCALIZATION

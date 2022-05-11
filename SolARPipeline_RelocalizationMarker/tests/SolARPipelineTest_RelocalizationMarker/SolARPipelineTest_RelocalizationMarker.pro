@@ -1,12 +1,11 @@
 ## remove Qt dependencies
-QMAKE_PROJECT_DEPTH = 0
 QT       -= core gui
 CONFIG -= qt
 
 QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
-TARGET = SolARPipelineTest_MappingAndRelocalizationFrontend
+TARGET = SolARPipelineTest_RelocalizationMarker
 VERSION=0.11.0
 PROJECTDEPLOYDIR = $${PWD}/../../..
 
@@ -15,8 +14,6 @@ CONFIG += c++1z
 CONFIG += console
 
 include(findremakenrules.pri)
-
-include(../../../manualincludepath.pri)
 
 CONFIG(debug,debug|release) {
     DEFINES += _DEBUG=1
@@ -38,13 +35,13 @@ include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/templateappconf
 HEADERS += \
 
 SOURCES += \
-    SolARPipelineTestMappingAndRelocalizationFrontend_main.cpp
+    main.cpp
 
 unix {
     LIBS += -ldl
     QMAKE_CXXFLAGS += -DBOOST_LOG_DYN_LINK
-
-    # Avoids adding install steps manually. To be commented to have a better control over them.
+	
+	# Avoids adding install steps manually. To be commented to have a better control over them.
     QMAKE_POST_LINK += "make install install_deps"
 }
 
@@ -64,13 +61,17 @@ macx {
 
 win32 {
 
-    DEFINES += WIN64 UNICODE _UNICODESolARPipelineTest_MappingAndRelocalizationFrontend
+    DEFINES += WIN64 UNICODE _UNICODE
     QMAKE_COMPILER_DEFINES += _WIN64
     QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275
 }
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/SolARPipelineTest_MappingAndRelocalizationFrontend_conf.xml)
+config_files.files= $$files($${PWD}/SolARPipelineTest_RelocalizationMarker_conf.xml) \
+					$${PWD}/qrcodes.png \ 					
+					$${PWD}/FiducialMarkers.png \ 
+					$${PWD}/markers.json \ 
+                    $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
 
 linux {
@@ -85,14 +86,9 @@ linux {
   INSTALLS += run_install
 }
 
-
 OTHER_FILES += \
-    packagedependencies.txt
-
-DISTFILES += \
-    .gitignore \
-    SolARPipelineTest_MappingAndRelocalizationFrontend_conf.xml
+    packagedependencies.txt \
+    SolARPipelineTest_RelocalizationMarker_conf.xml
 
 #NOTE : Must be placed at the end of the .pro
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
-
