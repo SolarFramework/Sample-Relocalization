@@ -34,6 +34,7 @@
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/pipeline/IMappingPipeline.h"
+#include "api/pipeline/IMapUpdatePipeline.h"
 
 #include <boost/log/core.hpp>
 #include "xpcf/xpcf.h"
@@ -146,6 +147,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     FrameworkReturnCode getLastPose(SolAR::datastructure::Transform3Df & pose,
                                     const PoseType poseType = SOLAR_POSE) const override;
 
+    /// @brief Reset the map stored by the map update pipeline
+    /// @return FrameworkReturnCode::_SUCCESS if the map is correctly reset, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode resetMap() const override;
+
   private:
 
     /// @brief send requests to the relocalization service
@@ -174,10 +179,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
   private:
 
-    // Relocalization and mapping services
+    // Relocalization, mapping and map update services
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
+    SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
 
     bool m_init = false;            // Indicate if initialization has been made
     bool m_cameraOK = false;        // Indicate if camera parameters has been set

@@ -37,6 +37,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, "Map", true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationMarkerService, "Marker", true);
+        declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapupdateService, true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
 
@@ -260,45 +261,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-/// @brief Set the rectification parameters (use for stereo camera)
-/// @param[in] rectCam1 the rectification parameters of the first camera
-/// @param[in] rectCam2 the rectification parameters of the second camera
-/// @return FrameworkReturnCode::_SUCCESS if the rectification parameters are correctly set, else FrameworkReturnCode::_ERROR_
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
-                                                                                              const SolAR::datastructure::RectificationParameters & rectCam2)
-{
-    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters");
-
-    if (!m_init) {
-        LOG_ERROR("Pipeline has not been initialized");
-        return FrameworkReturnCode::_ERROR_;
-    }
-
-    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
-
-        if (m_mappingService != nullptr){
-
-            LOG_DEBUG("Set rectification parameters for the mapping service");
-
-            try {
-                if (m_mappingService->setRectificationParameters(rectCam1, rectCam2) != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while setting rectification parameters for the mapping service");
-                    return FrameworkReturnCode::_ERROR_;
-                }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
-                return FrameworkReturnCode::_ERROR_;
-            }
-        }
-        else {
-            LOG_ERROR("Mapping service instance not created");
-            return FrameworkReturnCode::_ERROR_;
-        }
-    }
-
-    return FrameworkReturnCode::_SUCCESS;
-}
-
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(CameraParameters & cameraParams) const
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters");
@@ -365,8 +327,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         std::pair<SRef<Image>, Transform3Df> imagePose;
         m_dropBufferRelocalization.tryPop(imagePose);
         m_dropBufferRelocalizationMarker.tryPop(imagePose);
-        std::pair<std::vector<SRef<Image>>, std::vector<Transform3Df>> imagePoses;
-        m_dropBufferMapping.tryPop(imagePoses);
+        m_dropBufferMapping.tryPop(imagePose);
 /*
         m_dropBufferRelocalization.clear();
         m_dropBufferRelocalizationMarker.clear();
@@ -550,22 +511,23 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
-                                                                                            const std::vector<SolAR::datastructure::Transform3Df> & poses,
-                                                                                            const std::chrono::system_clock::time_point & timestamp,
-                                                                                            TransformStatus & transform3DStatus,
-                                                                                            SolAR::datastructure::Transform3Df & transform3D,
-                                                                                            float_t & confidence)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(
+                                            const SRef<SolAR::datastructure::Image> image,
+                                            const SolAR::datastructure::Transform3Df & pose,
+                                            const std::chrono::system_clock::time_point & timestamp,
+                                            TransformStatus & transform3DStatus,
+                                            SolAR::datastructure::Transform3Df & transform3D,
+                                            float_t & confidence)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest");
 
     if (m_started) {
 
         // Check if pose is valid
-        if (!poses[0].matrix().isZero()) {
+        if (!pose.matrix().isZero()) {
 
             // Store last pose received
-            setLastPose(poses[0]);
+            setLastPose(pose);
 
             // Give 3D transformation matrix if available
             transform3DStatus = m_T_M_W_status;
@@ -575,14 +537,14 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             // Relocalization
             if (checkNeedReloc()){
                 LOG_DEBUG("Push image and pose for relocalization task");
-                m_dropBufferRelocalization.push(std::make_pair(images[0], poses[0]));
-                m_dropBufferRelocalizationMarker.push(std::make_pair(images[0], poses[0]));
+                m_dropBufferRelocalization.push(std::make_pair(image, pose));
+                m_dropBufferRelocalizationMarker.push(std::make_pair(image, pose));
             }
 
             // Mapping if the pipeline mode is mapping and found 3D Transform
             if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
                 LOG_DEBUG("Push image and pose for mapping task");
-                m_dropBufferMapping.push(std::make_pair(images, poses));
+                m_dropBufferMapping.push(std::make_pair(image, pose));
             }
         }
     }
@@ -664,6 +626,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
     return FrameworkReturnCode::_SUCCESS;
 }
 
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() const
+{
+    return m_mapupdateService->resetMap();
+}
+
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
     std::pair<SRef<Image>, Transform3Df> imagePose;
@@ -722,26 +689,25 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 
 void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 {
-    std::pair<std::vector<SRef<Image>>, std::vector<Transform3Df>> imagePoses;
+    std::pair<SRef<Image>, Transform3Df> imagePose;
 
-    if (!m_dropBufferMapping.tryPop(imagePoses)) {
+    if (!m_dropBufferMapping.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
 
-    std::vector<SRef<Image>> images = imagePoses.first;
-    std::vector<Transform3Df> poses = imagePoses.second;
+    SRef<Image> image = imagePose.first;
+    Transform3Df pose = imagePose.second;
 
     // No image encoding to send to mapping service
-    for (auto & image : images)
-        image->setImageEncoding(Image::ENCODING_NONE);
+    image->setImageEncoding(Image::ENCODING_NONE);
 
     LOG_DEBUG("Send image and pose to mapping service");
     Transform3Df updatedT_M_W;
     MappingStatus mappingStatus;
     Transform3Df curT_M_W = get3DTransform();
-    if (m_mappingService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("Mapping status: {}", mappingStatus);
+    if (m_mappingService->mappingProcessRequest(image, pose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        LOG_DEBUG("Mapping status: {}", mappingStatus);
         if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
             LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
             set3DTransform(updatedT_M_W);
