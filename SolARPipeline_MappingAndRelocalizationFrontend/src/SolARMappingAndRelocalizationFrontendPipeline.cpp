@@ -261,10 +261,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-/// @brief Set the rectification parameters (use for stereo camera)
-/// @param[in] rectCam1 the rectification parameters of the first camera
-/// @param[in] rectCam2 the rectification parameters of the second camera
-/// @return FrameworkReturnCode::_SUCCESS if the rectification parameters are correctly set, else FrameworkReturnCode::_ERROR_
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam2)
 {
