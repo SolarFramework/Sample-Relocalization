@@ -183,10 +183,13 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
+    SRef<api::pipeline::IMappingPipeline>           m_mappingStereoService;
     SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
 
     bool m_init = false;            // Indicate if initialization has been made
-    bool m_cameraOK = false;        // Indicate if camera parameters has been set
+    bool m_cameraOK = false;        // Indicate if camera parameters have been set
+    bool m_stereoMappingOK = false; // Indicate if the stereo mapping is available
+    bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
     bool m_started = false;         // Indicate if pipeline il started
     bool m_tasksStarted = false;    // Indicate if tasks are started
 

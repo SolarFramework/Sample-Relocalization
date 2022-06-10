@@ -113,18 +113,25 @@
 
     <properties>
         <!-- gRPC proxy configuration-->
-        <configure component="IMappingPipeline_grpcProxy">
-            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50051"/>
-            <!--property name="channelUrl" access="rw" type="string" value="10.50.1.152:31890"/-->
+        <configure component="IMapUpdatePipeline_grpcProxy">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50053"/>
             <property name="channelCredentials" access="rw" type="uint" value="0"/>
         </configure>
-        <configure component="IRelocalizationPipeline_grpcProxy">
-                <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50052"/>
-                <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        <configure component="IMappingPipeline_grpcProxy" name="Mapping">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50051"/>
+            <property name="channelCredentials" access="rw" type="uint" value="0"/>
         </configure>
-        <configure component="IMapUpdatePipeline_grpcProxy">
-                <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50053"/>
-                <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        <configure component="IMappingPipeline_grpcProxy" name="StereoMapping">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50054"/>
+            <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        </configure>
+        <configure component="IRelocalizationPipeline_grpcProxy" name="RelocalizationMap">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50052"/>
+            <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        </configure>
+        <configure component="IRelocalizationPipeline_grpcProxy" name="RelocalizationMarkers">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50050"/>
+            <property name="channelCredentials" access="rw" type="uint" value="0"/>
         </configure>
 
         <configure component="SolARMappingAndRelocalizationFrontendPipeline">
