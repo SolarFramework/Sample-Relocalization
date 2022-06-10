@@ -183,7 +183,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
                     m_stereoMappingOK = true;
                 }
             }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
+                LOG_DEBUG("Exception raised during remote request to the mapping stereo service: {}", e.what());
             }
         }
         else {
@@ -293,7 +293,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
             }
         }
         else {
-            LOG_ERROR("Mapping service stereo instance not created");
+            LOG_DEBUG("Mapping service stereo instance not created");
         }
     }
 
