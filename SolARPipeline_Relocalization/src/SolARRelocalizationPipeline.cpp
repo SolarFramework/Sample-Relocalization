@@ -190,6 +190,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
 				return FrameworkReturnCode::_ERROR_;
 			}
 		}
+        else {
+            // Force sub map request to map update
+            m_isMap = false;
+        }
         m_started = true;        
     }
     else {
