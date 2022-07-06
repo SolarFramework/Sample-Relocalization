@@ -599,7 +599,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
                 return FrameworkReturnCode::_ERROR_;
             }
 
-            if (m_stereoMappingOK){
+            if ((m_stereoMappingOK) && (m_rectificationOK)){
 
                 LOG_DEBUG("Stop the mapping stereo service");
 
