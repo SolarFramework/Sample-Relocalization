@@ -392,6 +392,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         set3DTransform(Transform3Df::Identity());
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
+        m_mappingStatus = BOOTSTRAP;
         m_isNeedReloc = true;
         m_vector_reloc_transf_matrix.clear();
         setLastPose(Transform3Df(Maths::Matrix4f::Zero()));
@@ -630,7 +631,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                                                                                             const std::chrono::system_clock::time_point & timestamp,
                                                                                             TransformStatus & transform3DStatus,
                                                                                             SolAR::datastructure::Transform3Df & transform3D,
-                                                                                            float_t & confidence)
+                                                                                            float_t & confidence,
+                                                                                            MappingStatus & mappingStatus)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest");
 
@@ -646,6 +648,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             transform3DStatus = m_T_M_W_status;
             transform3D = get3DTransform();
             confidence = m_confidence;
+            mappingStatus = m_mappingStatus;
 
             // Relocalization
             if (checkNeedReloc()){
@@ -827,6 +830,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 
         if (m_mappingStereoService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping stereo status: {}", mappingStatus);
+            m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
                 LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
                 set3DTransform(updatedT_M_W);
@@ -842,6 +846,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 
         if (m_mappingService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping status: {}", mappingStatus);
+            m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
                 LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
                 set3DTransform(updatedT_M_W);

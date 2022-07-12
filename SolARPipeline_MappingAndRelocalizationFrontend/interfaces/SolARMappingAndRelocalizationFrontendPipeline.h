@@ -120,13 +120,15 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @param[out] transform3DStatus the status of the current 3D transformation matrix
     /// @param[out] transform3D the current 3D transformation matrix (if available)
     /// @param[out] confidence the confidence score of the 3D transformation matrix
+    /// @param[out] mappingStatus the status of the current mapping processing
     /// @return FrameworkReturnCode::_SUCCESS if the data are ready to be processed, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                  const std::vector<SolAR::datastructure::Transform3Df> & poses,
                                                  const std::chrono::system_clock::time_point & timestamp,
                                                  TransformStatus & transform3DStatus,
                                                  SolAR::datastructure::Transform3Df & transform3D,
-                                                 float_t & confidence) override;
+                                                 float_t & confidence,
+                                                 MappingStatus & mappingStatus) override;
 
     /// @brief Request the asynchronous relocalization pipeline to get the 3D transform offset
     /// between the device coordinate system and the SolAR coordinate system
@@ -208,6 +210,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     std::mutex                          m_mutexTransform;
     std::atomic<TransformStatus>        m_T_M_W_status;
     float_t m_confidence = 0;
+    std::atomic<MappingStatus>          m_mappingStatus;
 
     int m_nbRelocTransformMatrixRequest = 3;
     int m_maxTimeRequest;
