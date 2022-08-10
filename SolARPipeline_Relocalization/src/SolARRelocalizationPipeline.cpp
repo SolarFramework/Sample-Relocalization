@@ -111,13 +111,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
         LOG_ERROR("Pipeline has not been initialized");
         return FrameworkReturnCode::_ERROR_;
     }
-
-    m_calibration = cameraParams.intrinsic;
-    m_distortion = cameraParams.distortion;
-    m_pnpRansac->setCameraParameters(m_calibration, m_distortion);
-	m_undistortKeypoints->setCameraParameters(m_calibration, m_distortion);
-    LOG_DEBUG("Camera intrinsic / distortion = {} / {}", m_calibration, m_distortion);
-
+    m_camParams = cameraParams;
+    LOG_DEBUG("Camera intrinsic / distortion:\n{}\n{}", m_camParams.intrinsic, m_camParams.distortion);
     LOG_DEBUG("Set camera parameters for the map update service");
 
 	if (m_mapUpdatePipeline != nullptr) {
@@ -148,8 +143,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::getCameraParameters(CameraParam
     }
 
     if (m_cameraOK) {
-        cameraParams.intrinsic = m_calibration;
-        cameraParams.distortion = m_distortion;
+        cameraParams = m_camParams;
         return FrameworkReturnCode::_SUCCESS;
     }
     else {
@@ -225,7 +219,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::stop()
 }
 
 FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                                          SolAR::datastructure::Transform3Df& pose, float_t & confidence) 
+                                                                          SolAR::datastructure::Transform3Df& pose,
+                                                                          float_t & confidence)
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
 
@@ -239,8 +234,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 		SRef<DescriptorBuffer> descriptors;
 		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
 			return FrameworkReturnCode::_ERROR_;
-		m_undistortKeypoints->undistort(keypoints, undistortedKeypoints);
+        m_undistortKeypoints->undistort(keypoints, m_camParams, undistortedKeypoints);
 		SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
+        frame->setCameraParameters(m_camParams);
 
 		if (m_mapUpdatePipeline && !m_isMap) {
 			SRef<Map> subMap;
@@ -300,7 +296,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             }
             // pnp ransac
             std::vector<uint32_t> inliers;
-            if (m_pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+            if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
 				m_isMap = true;

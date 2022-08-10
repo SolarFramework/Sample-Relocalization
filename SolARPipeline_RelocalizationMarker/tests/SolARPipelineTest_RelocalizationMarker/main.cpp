@@ -66,7 +66,7 @@ int main(int argc, char *argv[]){
 		CameraParameters camParams = gCamera->getParameters();
 		// set camera parameters
 		gRelocalizationPipeline->setCameraParameters(camParams);
-		gOverlay3D->setCameraParameters(camParams.intrinsic, camParams.distortion);
+
         // start pipeline
 		if (gRelocalizationPipeline->start() != FrameworkReturnCode::_SUCCESS) {
 			LOG_ERROR("Cannot start relocalization pipeline");
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]){
 			Transform3Df pose;
             if (gRelocalizationPipeline->relocalizeProcessRequest(image, pose, confidence) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG("Relocalization succeeds");
-				gOverlay3D->draw(pose, image);
+				gOverlay3D->draw(pose, camParams, image);
             }
             else
 				LOG_DEBUG("Relocalization fails");

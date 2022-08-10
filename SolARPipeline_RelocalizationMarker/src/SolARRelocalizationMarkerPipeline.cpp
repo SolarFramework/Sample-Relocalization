@@ -116,10 +116,7 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::init()
 FrameworkReturnCode SolARRelocalizationMarkerPipeline::setCameraParameters(const CameraParameters & cameraParams) 
 {
 	LOG_DEBUG("SolARRelocalizationMarkerPipeline::setCameraParameters");
-    m_calibration = cameraParams.intrinsic;
-    m_distortion = cameraParams.distortion;
-    m_pnp->setCameraParameters(m_calibration, m_distortion);
-    m_projector->setCameraParameters(m_calibration, m_distortion);
+    m_camParams = cameraParams;
 	m_cameraOK = true;
     return FrameworkReturnCode::_SUCCESS;
 }
@@ -128,8 +125,7 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::getCameraParameters(Camer
 {
     LOG_DEBUG("SolARRelocalizationMarkerPipeline::getCameraParameters");
     if (m_cameraOK) {
-        cameraParams.intrinsic = m_calibration;
-        cameraParams.distortion = m_distortion;
+        cameraParams = m_camParams;
         return FrameworkReturnCode::_SUCCESS;
     }
     else {
@@ -162,7 +158,8 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::stop()
 }
 
 FrameworkReturnCode SolARRelocalizationMarkerPipeline::relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                                          SolAR::datastructure::Transform3Df& pose, float_t & confidence) 
+                                                                                SolAR::datastructure::Transform3Df& pose,
+                                                                                float_t & confidence)
 {
     LOG_DEBUG("SolARRelocalizationMarkerPipeline::relocalizeProcessRequest");
     confidence = 1.f;
@@ -217,10 +214,10 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::relocalizeProcessRequest(
         return FrameworkReturnCode::_ERROR_;
 
     // Compute the pose of the camera using a Perspective n Points algorithm using all corners of the detected markers
-    if (m_pnp->estimate(pts2D, pts3D, pose) == FrameworkReturnCode::_SUCCESS)
+    if (m_pnp->estimate(pts2D, pts3D, m_camParams, pose) == FrameworkReturnCode::_SUCCESS)
     {
         std::vector<Point2Df> projected2DPts;
-        m_projector->project(pts3D, projected2DPts, pose);
+        m_projector->project(pts3D, pose, m_camParams, projected2DPts);
         float errorReproj(0.f);
         for (int j = 0; j < projected2DPts.size(); ++j)
             errorReproj += (projected2DPts[j] - pts2D[j]).norm();
