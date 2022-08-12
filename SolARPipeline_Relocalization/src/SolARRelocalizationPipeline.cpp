@@ -114,22 +114,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
     m_camParams = cameraParams;
     LOG_DEBUG("Camera intrinsic / distortion:\n{}\n{}", m_camParams.intrinsic, m_camParams.distortion);
     LOG_DEBUG("Set camera parameters for the map update service");
-
-	if (m_mapUpdatePipeline != nullptr) {
-		try {
-			if (m_mapUpdatePipeline->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
-				LOG_ERROR("Error while setting camera parameters for the map update service");
-				return FrameworkReturnCode::_ERROR_;
-			}
-		}
-		catch (const std::exception &e) {
-			LOG_ERROR("Exception raised during remote request to the map update service: {}", e.what());
-			return FrameworkReturnCode::_ERROR_;
-		}
-	}
-
     m_cameraOK = true;
-
     return FrameworkReturnCode::_SUCCESS;
 }
 
