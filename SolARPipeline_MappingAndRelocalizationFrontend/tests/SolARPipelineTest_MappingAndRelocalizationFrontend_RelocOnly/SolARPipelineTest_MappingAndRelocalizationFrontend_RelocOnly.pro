@@ -7,7 +7,7 @@ QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
 TARGET = SolARPipelineTest_MappingAndRelocalizationFrontend_RelocOnly
-VERSION=0.11.0
+VERSION=1.0.0
 
 DEFINES += MYVERSION=$${VERSION}
 CONFIG += c++1z

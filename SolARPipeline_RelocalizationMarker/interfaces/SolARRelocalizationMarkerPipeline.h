@@ -125,8 +125,7 @@ private:
 
 private:
     // Camera parameters
-    CamCalibration                                              m_calibration;
-    CamDistortion                                               m_distortion;
+    CameraParameters                                            m_camParams;
     bool                                                        m_cameraOK = false;
     bool                                                        m_initOK = false;
     float                                                       m_maxReprojError = 2.f;

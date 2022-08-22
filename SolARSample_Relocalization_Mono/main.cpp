@@ -87,9 +87,6 @@ int main(int argc, char *argv[])
 		/* Get and set camera intrinsics parameters for components */
 		CameraParameters camParams;
 		camParams = camera->getParameters();
-		overlay3D->setCameraParameters(camParams.intrinsic, camParams.distortion);
-		pnpRansac->setCameraParameters(camParams.intrinsic, camParams.distortion);
-		undistortKeypoints->setCameraParameters(camParams.intrinsic, camParams.distortion);
 		LOG_DEBUG("Loaded intrinsics \n{}\n\n{}", camParams.intrinsic, camParams.distortion);
 
 		/* Get min number of inliers to valid a pose by pnp ransac */
@@ -161,8 +158,9 @@ int main(int argc, char *argv[])
 			SRef<DescriptorBuffer> descriptors;
 			if (descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
 				continue;
-			undistortKeypoints->undistort(keypoints, undistortedKeypoints);
+			undistortKeypoints->undistort(keypoints, camParams, undistortedKeypoints);
 			SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
+			frame->setCameraParameters(camParams);
 			// Relocalization
 			std::vector <uint32_t> retKeyframesId;
 			std::vector<Transform3Df> bestRetKeyframePoses;
@@ -198,7 +196,7 @@ int main(int argc, char *argv[])
 				// pnp ransac
 				std::vector<uint32_t> inliers;
 				Transform3Df pose;
-				if (pnpRansac->estimate(pts2D, pts3D, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+				if (pnpRansac->estimate(pts2D, pts3D, camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
 					LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
 					frame->setPose(pose);
 					framePoses.push_back(pose);
@@ -206,7 +204,7 @@ int main(int argc, char *argv[])
 					for (const auto& it : inliers)
 						pts2DInliers.push_back(pts2D[it]);
 					overlay2D->drawCircles(pts2DInliers, frame->getView());
-					overlay3D->draw(pose, frame->getView());					
+					overlay3D->draw(pose, frame->getCameraParameters(), frame->getView());					
 				}
 			}
 			// display image

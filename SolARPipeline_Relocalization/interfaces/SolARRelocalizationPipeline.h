@@ -142,8 +142,7 @@ private:
 	int m_nbRelocFails;
 
     // Camera parameters
-    CamCalibration                                          m_calibration;
-    CamDistortion                                           m_distortion;
+    CameraParameters                                        m_camParams;
 
 	// keyframe collection
 	SRef<KeyframeCollection>								m_keyframeCollection;
