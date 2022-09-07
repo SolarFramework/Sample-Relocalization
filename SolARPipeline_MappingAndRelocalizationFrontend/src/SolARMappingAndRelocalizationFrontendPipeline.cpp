@@ -100,6 +100,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
 
+    // Stop services if needed
+    if (m_started)
+        stop();
+
     if (m_relocalizationService != nullptr){
 
         LOG_DEBUG("Relocalization service URL = {}",

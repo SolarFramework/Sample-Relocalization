@@ -74,6 +74,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
 
+    if (m_started)
+        stop();
+
     if (m_mapUpdatePipeline != nullptr) {
 
         LOG_DEBUG("Map Update pipeline URL = {}",
