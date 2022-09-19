@@ -890,6 +890,8 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
         transform3D.translation() = translations;
         LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", transform3D.matrix());
         set3DTransform(transform3D);
+        if (m_mappingStatus == BOOTSTRAP)
+            m_mappingStatus = MAPPING;
         m_T_M_W_status = NEW_3DTRANSFORM;
         m_relocTimer.restart();
         m_isNeedReloc = false;
