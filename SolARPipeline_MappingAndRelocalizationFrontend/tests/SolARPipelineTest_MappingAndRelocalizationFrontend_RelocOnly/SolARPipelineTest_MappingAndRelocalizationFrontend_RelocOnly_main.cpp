@@ -157,6 +157,7 @@ int main(int argc, char ** argv)
                     api::pipeline::TransformStatus transform3DStatus;
                     Transform3Df transform3D;
                     float_t confidence;
+                    api::pipeline::MappingStatus mappingStatus;
 
                     LOG_INFO("Send image and pose to pipeline");
 
@@ -165,7 +166,7 @@ int main(int argc, char ** argv)
 
                     // Send data to mapping and relocalization front end pipeline
                     gRelocalizationAndMappingFrontendPipeline->relocalizeProcessRequest(
-                                image, pose, timestamp, transform3DStatus, transform3D, confidence);
+                                {image}, {pose}, timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
 
                     if (transform3DStatus == api::pipeline::NEW_3DTRANSFORM) {
                         LOG_INFO("New 3D transformation = {}", transform3D.matrix());

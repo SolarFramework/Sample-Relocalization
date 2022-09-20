@@ -74,6 +74,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
 
+    if (m_started)
+        stop();
+
     if (m_mapUpdatePipeline != nullptr) {
 
         LOG_DEBUG("Map Update pipeline URL = {}",
@@ -169,6 +172,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
 				return FrameworkReturnCode::_ERROR_;
 			}
 		}
+        else {
+            // Force sub map request to map update
+            m_isMap = false;
+        }
         m_started = true;        
     }
     else {

@@ -92,6 +92,13 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams) override;
 
+    /// @brief Set the rectification parameters (use for stereo camera)
+    /// @param[in] rectCam1 the rectification parameters of the first camera
+    /// @param[in] rectCam2 the rectification parameters of the second camera
+    /// @return FrameworkReturnCode::_SUCCESS if the rectification parameters are correctly set, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
+                                                   const SolAR::datastructure::RectificationParameters & rectCam2) override;
+
     /// @brief Get the camera parameters
     /// @param[out] cameraParams: the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly returned, else FrameworkReturnCode::_ERROR_
@@ -107,33 +114,35 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     /// @brief Request the asynchronous relocalization pipeline to process a new image to calculate
     /// the corresponding 3D transformation to the SolAR coordinates system
-    /// @param[in] image: the image to process
-    /// @param[in] pose: the original pose in the client coordinates system
-    /// @param[in] timestamp: the timestamp of the image
-    /// @param[out] transform3DStatus: the status of the current 3D transformation matrix
-    /// @param[out] transform3D : the current 3D transformation matrix (if available)
-    /// @param[out] confidence: the confidence score of the 3D transformation matrix
+    /// @param[in] images the images to process
+    /// @param[in] poses the poses associated to images in the client coordinates system
+    /// @param[in] timestamp the timestamp of the image
+    /// @param[out] transform3DStatus the status of the current 3D transformation matrix
+    /// @param[out] transform3D the current 3D transformation matrix (if available)
+    /// @param[out] confidence the confidence score of the 3D transformation matrix
+    /// @param[out] mappingStatus the status of the current mapping processing
     /// @return FrameworkReturnCode::_SUCCESS if the data are ready to be processed, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                 const SolAR::datastructure::Transform3Df & pose,
+    FrameworkReturnCode relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
+                                                 const std::vector<SolAR::datastructure::Transform3Df> & poses,
                                                  const std::chrono::system_clock::time_point & timestamp,
                                                  TransformStatus & transform3DStatus,
                                                  SolAR::datastructure::Transform3Df & transform3D,
-                                                 float_t & confidence) override;
+                                                 float_t & confidence,
+                                                 MappingStatus & mappingStatus) override;
 
     /// @brief Request the asynchronous relocalization pipeline to get the 3D transform offset
     /// between the device coordinate system and the SolAR coordinate system
-    /// @param[out] transform3DStatus: the status of the current 3D transformation matrix
-    /// @param[out] transform3D : the current 3D transformation matrix (if available)
-    /// @param[out] confidence: the confidence score of the 3D transformation matrix
+    /// @param[out] transform3DStatus the status of the current 3D transformation matrix
+    /// @param[out] transform3D the current 3D transformation matrix (if available)
+    /// @param[out] confidence the confidence score of the 3D transformation matrix
     /// @return FrameworkReturnCode::_SUCCESS if the 3D transform is available, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode get3DTransformRequest(TransformStatus & transform3DStatus,
                                               SolAR::datastructure::Transform3Df & transform3D,
                                               float_t & confidence) override;
 
     /// @brief Return the last pose processed by the pipeline
-    /// @param[out] pose: the last pose if available
-    /// @param[in] poseType: the type of the requested pose
+    /// @param[out] pose the last pose if available
+    /// @param[in] poseType the type of the requested pose
     ///            - in the SolAR coordinate system (by default)
     ///            - in the device coordinate system
     /// @return FrameworkReturnCode::_SUCCESS if the last pose is available, else FrameworkReturnCode::_ERROR_
@@ -176,10 +185,13 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
     SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
     SRef<api::pipeline::IMappingPipeline>           m_mappingService;
+    SRef<api::pipeline::IMappingPipeline>           m_mappingStereoService;
     SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
 
     bool m_init = false;            // Indicate if initialization has been made
-    bool m_cameraOK = false;        // Indicate if camera parameters has been set
+    bool m_cameraOK = false;        // Indicate if camera parameters have been set
+    bool m_stereoMappingOK = false; // Indicate if the stereo mapping is available
+    bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
     bool m_started = false;         // Indicate if pipeline il started
     bool m_tasksStarted = false;    // Indicate if tasks are started
 
@@ -191,13 +203,14 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     // Drop buffer used by the relocalization task
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalization;
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalizationMarker;
-    xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferMapping;
+    xpcf::DropBuffer<std::pair<std::vector<SRef<datastructure::Image>>, std::vector<datastructure::Transform3Df>>> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
     SolAR::datastructure::Transform3Df  m_T_M_W;
     std::mutex                          m_mutexTransform;
     std::atomic<TransformStatus>        m_T_M_W_status;
     float_t m_confidence = 0;
+    std::atomic<MappingStatus>          m_mappingStatus;
 
     int m_nbRelocTransformMatrixRequest = 3;
     int m_maxTimeRequest;
