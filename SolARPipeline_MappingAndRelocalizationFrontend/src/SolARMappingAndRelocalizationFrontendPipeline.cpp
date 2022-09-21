@@ -770,12 +770,19 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     Transform3Df new_pose;
     float confidence;
 
-    if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("Relocalization succeeded");
-        LOG_DEBUG("Client original pose: \n{}", pose.matrix());
-        LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
-		LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
-        findTransformation(new_pose * pose.inverse());
+    try {
+        if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
+            LOG_INFO("Relocalization succeeded");
+            LOG_DEBUG("Client original pose: \n{}", pose.matrix());
+            LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
+            LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
+            findTransformation(new_pose * pose.inverse());
+        }
+    }  catch (const std::exception &e) {
+        LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
+
+        m_mappingStatus = TRACKING_LOST;
+        m_T_M_W_status = NO_3DTRANSFORM;
     }
 }
 
