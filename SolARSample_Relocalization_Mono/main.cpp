@@ -159,8 +159,7 @@ int main(int argc, char *argv[])
 			if (descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
 				continue;
 			undistortKeypoints->undistort(keypoints, camParams, undistortedKeypoints);
-			SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
-			frame->setCameraParameters(camParams);
+            SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image);
 			// Relocalization
 			std::vector <uint32_t> retKeyframesId;
 			std::vector<Transform3Df> bestRetKeyframePoses;
@@ -204,7 +203,7 @@ int main(int argc, char *argv[])
 					for (const auto& it : inliers)
 						pts2DInliers.push_back(pts2D[it]);
 					overlay2D->drawCircles(pts2DInliers, frame->getView());
-					overlay3D->draw(pose, frame->getCameraParameters(), frame->getView());					
+                    overlay3D->draw(pose, camParams, frame->getView());
 				}
 			}
 			// display image

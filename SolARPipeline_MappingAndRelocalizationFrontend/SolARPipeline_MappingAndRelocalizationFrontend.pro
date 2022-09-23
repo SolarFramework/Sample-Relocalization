@@ -99,7 +99,6 @@ OTHER_FILES += \
     packagedependencies.txt
 
 DISTFILES += \
-    ../../../manualincludepath.pri \
     LICENSE \
     README.md \
     bcom-SolARPipelineMapping.pc.in \

@@ -143,6 +143,7 @@ private:
 
     // Camera parameters
     CameraParameters                                        m_camParams;
+    uint32_t                                                m_camParamsID;
 
 	// keyframe collection
 	SRef<KeyframeCollection>								m_keyframeCollection;
