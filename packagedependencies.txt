@@ -3,4 +3,3 @@ SolARModuleOpenGL|1.0.0|SolARModuleOpenGL|SolARBuild@github|https://github.com/S
 SolARModuleTools|1.0.0|SolARModuleTools|SolARBuild@github|https://github.com/SolarFramework/SolARModuleTools/releases/download
 SolARModuleFBOW|1.0.0|SolARModuleFBOW|SolARBuild@github|https://github.com/SolarFramework/SolARModuleFBOW/releases/download
 SolARPipelineRelocalization|1.0.0|SolARPipelineRelocalization|SolARBuild@github|https://github.com/SolarFramework/Sample-Relocalization/releases/download
-
