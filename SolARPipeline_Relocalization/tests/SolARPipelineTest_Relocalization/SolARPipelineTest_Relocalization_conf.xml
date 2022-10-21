@@ -146,7 +146,7 @@
 
 	<properties>
 		<configure component="SolARCameraOpencv">
-                        <property name="calibrationFile" type="string" value="../../../../data/camera_calibration.json"/> <!-- Configure to the used camera -->
+                        <property name="calibrationFile" type="string" value="../../../../../data/camera_calibration.json"/> <!-- Configure to the used camera -->
             <property name="deviceID" type="uint" value="0"/>
 		</configure>
 		<configure component="SolARImagesAsCameraOpencv">
@@ -160,7 +160,7 @@
 			<property name="delayTime" type="int" value="30"/>
 		</configure>
 		<configure component="SolARMapManager">
-                <property name="directory" type="string" value="../../../../data/map"/>
+                <property name="directory" type="string" value="../../../../../data/map"/>
 			<property name="identificationFileName" type="string" value="identification.bin"/>
 			<property name="coordinateFileName" type="string" value="coordinate.bin"/>
 			<property name="pointCloudManagerFileName" type="string" value="pointcloud.bin"/>
@@ -207,7 +207,7 @@
 			<property name="method" type="string" value="EPNP"/>
 		</configure>
 		<configure component="SolARKeyframeRetrieverFBOW">
-			<property name="VOCpath" type="string" value="../../../../data/fbow_voc/akaze.fbow"/>
+			<property name="VOCpath" type="string" value="../../../../../data/fbow_voc/akaze.fbow"/>
 			<property name="threshold" type="float" value="0.01"/>
 			<property name="level" type="int" value="3"/>
 			<property name="matchingDistanceRatio" type="float" value="0.8"/>

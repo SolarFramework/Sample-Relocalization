@@ -12,6 +12,7 @@ build/
 *_debug.bat
 *_release.bat
 
+deploy
 
 # Prerequisites
 *.d
