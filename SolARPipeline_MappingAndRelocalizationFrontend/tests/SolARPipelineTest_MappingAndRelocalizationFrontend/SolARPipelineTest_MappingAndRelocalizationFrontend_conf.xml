@@ -59,8 +59,8 @@
 			<property name="channelCredentials" access="rw" type="uint" value="0"/>
 		</configure>
 		<configure component="SolARDeviceDataLoader">
-			<property name="calibrationFile" type="string" value="../../../../data/data_hololens/hololens_calibration.json"/>
-			<property name="pathToData" type="string" value="../../../../data/data_hololens/loop_desktop_A"/>
+			<property name="calibrationFile" type="string" value="../../../../../data/data_hololens/hololens_calibration.json"/>
+			<property name="pathToData" type="string" value="../../../../../data/data_hololens/loop_desktop_A"/>
 			<property name="delayTime" type="int" value="200"/>
 		</configure>
 		<configure component="SolARImageViewerOpencv">
