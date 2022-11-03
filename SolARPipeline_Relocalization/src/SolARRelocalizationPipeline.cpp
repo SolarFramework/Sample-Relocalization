@@ -115,6 +115,12 @@ FrameworkReturnCode SolARRelocalizationPipeline::setCameraParameters(const Camer
         return FrameworkReturnCode::_ERROR_;
     }
     m_camParams = cameraParams;
+
+    // add current camera parameters to the map manager
+    SRef<CameraParameters> camParams = xpcf::utils::make_shared<CameraParameters>(m_camParams);
+    m_mapManager->addCameraParameters(camParams);
+    m_camParamsID = camParams->id;
+
     LOG_DEBUG("Camera intrinsic / distortion:\n{}\n{}", m_camParams.intrinsic, m_camParams.distortion);
     LOG_DEBUG("Set camera parameters for the map update service");
     m_cameraOK = true;
@@ -159,7 +165,13 @@ FrameworkReturnCode SolARRelocalizationPipeline::start()
 			LOG_DEBUG("Load initial map from local file");
 			// Load map from file
 			if (m_mapManager->loadFromFile() == FrameworkReturnCode::_SUCCESS) {
-				SRef<Map> map;
+
+                // add current camera parameters to the map manager
+                SRef<CameraParameters> camParams = xpcf::utils::make_shared<CameraParameters>(m_camParams);
+                m_mapManager->addCameraParameters(camParams);
+                m_camParamsID = camParams->id;
+
+                SRef<Map> map;
 				m_mapManager->getMap(map);
 				LOG_DEBUG("Map nb points = {}", map->getConstPointCloud()->getNbPoints());
 				m_keyframeCollection = map->getConstKeyframeCollection();
@@ -227,15 +239,11 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
 			return FrameworkReturnCode::_ERROR_;
         m_undistortKeypoints->undistort(keypoints, m_camParams, undistortedKeypoints);
-		SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
-        frame->setCameraParameters(m_camParams);
+        SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, m_camParamsID, Transform3Df::Identity());
 
 		if (m_mapUpdatePipeline && !m_isMap) {
 			SRef<Map> subMap;
-            if (m_mapUpdatePipeline->start() != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Cannot start Map Update pipeline");
-                return FrameworkReturnCode::_ERROR_;
-            }
+
             if (m_mapUpdatePipeline->getSubmapRequest(frame, subMap) == FrameworkReturnCode::_SUCCESS){
 				m_mapManager->setMap(subMap);
                 m_keyframeCollection = subMap->getConstKeyframeCollection();                                
@@ -245,13 +253,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             }
             else{
                 LOG_DEBUG("Cannot get submap");
-                if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Cannot stop Map Update pipeline");
-                }
                 return FrameworkReturnCode::_ERROR_;
-            }
-            if (m_mapUpdatePipeline->stop() != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Cannot stop Map Update pipeline");
             }
         }
 

@@ -172,8 +172,7 @@ int main(int argc, char *argv[])
 			SRef<DescriptorBuffer> descriptors;
 			if (descriptorExtractor->extract(image, keypoints, descriptors) == FrameworkReturnCode::_SUCCESS) {
 				undistortKeypoints->undistort(keypoints, camParams, undistortedKeypoints);
-				SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, Transform3Df::Identity());
-				frame->setCameraParameters(camParams);
+                SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image);
 				m_dropBufferFrame.push(frame);
 			}			
 		};
@@ -222,7 +221,7 @@ int main(int argc, char *argv[])
 				// pnp ransac
 				std::vector<uint32_t> inliers;
 				Transform3Df pose;
-				if (pnpRansac->estimate(pts2D, pts3D, frame->getCameraParameters(), inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+                if (pnpRansac->estimate(pts2D, pts3D, camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
 					LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
 					frame->setPose(pose);
 					framePoses.push_back(pose);
@@ -230,7 +229,7 @@ int main(int argc, char *argv[])
 					for (const auto& it : inliers)
 						pts2DInliers.push_back(pts2D[it]);
 					overlay2D->drawCircles(pts2DInliers, frame->getView());
-					overlay3D->draw(pose, frame->getCameraParameters(), frame->getView());
+                    overlay3D->draw(pose, camParams, frame->getView());
 				}
 			}
 			m_dropBufferDisplay.push(std::make_pair(frame, bestRetKeyframePoses));

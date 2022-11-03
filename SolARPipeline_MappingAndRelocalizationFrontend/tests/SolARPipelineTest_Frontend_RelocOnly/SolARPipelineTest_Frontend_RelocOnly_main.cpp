@@ -1,5 +1,5 @@
 /**
- * @copyright Copyright (c) 2021 B-com http://www.b-com.com/
+ * @copyright Copyright (c) 2022 B-com http://www.b-com.com/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 
 #include "core/Log.h"
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
-#include "api/pipeline/IMappingPipeline.h"
 #include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
 
@@ -56,6 +55,7 @@ static void SigInt(int signo) {
 
 ///
 /// \brief Test application for SolARPipeline_MappingAndRelocalizationFrontend
+/// only with relocalization service
 ///
 
 int main(int argc, char ** argv)
@@ -79,7 +79,7 @@ int main(int argc, char ** argv)
     signal(SIGINT, SigInt);
 
     // Default configuration file
-    char * config_file = (char *)"SolARPipelineTest_MappingAndRelocalizationFrontend_conf.xml";
+    char * config_file = (char *)"SolARPipelineTest_Frontend_RelocOnly_conf.xml";
 
     if (argc > 1) {
         // Get pipeline configuration file path and name from main args
@@ -105,9 +105,10 @@ int main(int argc, char ** argv)
             return -1;
         }
 
-        LOG_INFO("Initialize the pipeline");
+        LOG_INFO("Initialize the pipeline in \'relocalization only\' mode");
 
-        if (gRelocalizationAndMappingFrontendPipeline->init() != FrameworkReturnCode::_SUCCESS) {
+        if (gRelocalizationAndMappingFrontendPipeline->init(SolAR::api::pipeline::RELOCALIZATION_ONLY)
+                != FrameworkReturnCode::_SUCCESS) {
             LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
             return -1;
         }
@@ -175,10 +176,6 @@ int main(int argc, char ** argv)
                     }
                     else {
                         LOG_INFO("No 3D transformation matrix");
-                    }
-
-                    if (mappingStatus == api::pipeline::MappingStatus::TRACKING_LOST) {
-                        LOG_INFO("Tracking lost!");
                     }
 
                     // Display image sent

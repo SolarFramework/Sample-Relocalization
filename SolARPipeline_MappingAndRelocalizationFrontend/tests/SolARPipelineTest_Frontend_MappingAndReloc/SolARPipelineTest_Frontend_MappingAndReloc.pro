@@ -6,7 +6,7 @@ CONFIG -= qt
 QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
-TARGET = SolARPipelineTest_MappingAndRelocalizationFrontend
+TARGET = SolARPipelineTest_Frontend_MappingAndReloc
 VERSION=1.0.0
 PROJECTDEPLOYDIR = $${PWD}/../../../deploy
 
@@ -36,7 +36,7 @@ include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/templateappconf
 HEADERS += \
 
 SOURCES += \
-    SolARPipelineTestMappingAndRelocalizationFrontend_main.cpp
+    SolARPipelineTest_Frontend_MappingAndReloc_main.cpp
 
 unix {
     LIBS += -ldl
@@ -62,13 +62,13 @@ macx {
 
 win32 {
 
-    DEFINES += WIN64 UNICODE _UNICODESolARPipelineTest_MappingAndRelocalizationFrontend
+    DEFINES += WIN64 UNICODE _UNICODE
     QMAKE_COMPILER_DEFINES += _WIN64
     QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275
 }
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/SolARPipelineTest_MappingAndRelocalizationFrontend_conf.xml)
+config_files.files= $$files($${PWD}/SolARPipelineTest_Frontend_MappingAndReloc_conf.xml)
 INSTALLS += config_files
 
 linux {
@@ -89,7 +89,7 @@ OTHER_FILES += \
 
 DISTFILES += \
     .gitignore \
-    SolARPipelineTest_MappingAndRelocalizationFrontend_conf.xml
+    SolARPipelineTest_Frontend_MappingAndReloc_conf.xml
 
 #NOTE : Must be placed at the end of the .pro
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
