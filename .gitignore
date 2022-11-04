@@ -104,9 +104,6 @@ data/data_hololens*
 data/*.avi
 data/fbow_voc
 
-
-data/
-
 SolARService_Relocalization/start_relocalization_service.sh
 
 run.sh
