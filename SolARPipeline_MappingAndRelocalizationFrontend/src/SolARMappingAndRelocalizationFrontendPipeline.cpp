@@ -281,13 +281,31 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
             LOG_ERROR("Mapping service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
+    }
+
+    m_cameraOK = true;
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams1,
+                                                                                       const SolAR::datastructure::CameraParameters & cameraParams2)
+{
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(stereo)");
+
+    if (!m_init) {
+        LOG_ERROR("Pipeline has not been initialized");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
         if (m_stereoMappingOK){
 
             LOG_DEBUG("Set camera parameters for the mapping stereo service");
 
             try {
-                if (m_mappingStereoService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                if (m_mappingStereoService->setCameraParameters(cameraParams1, cameraParams2) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while setting camera parameters for the mapping stereo service");
                     return FrameworkReturnCode::_ERROR_;
                 }
@@ -301,9 +319,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         }
     }
 
-    m_cameraOK = true;
-
-    return FrameworkReturnCode::_SUCCESS;
+    return setCameraParameters(cameraParams1);
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
