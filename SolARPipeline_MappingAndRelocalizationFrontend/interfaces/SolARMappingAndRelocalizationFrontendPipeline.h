@@ -149,9 +149,19 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     FrameworkReturnCode getLastPose(SolAR::datastructure::Transform3Df & pose,
                                     const PoseType poseType = SOLAR_POSE) const override;
 
+    /// @brief Request the global map stored by the map update pipeline
+    /// @param[out] map: the output global map
+    /// @return FrameworkReturnCode::_SUCCESS if the global map is available, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getMapRequest(SRef<SolAR::datastructure::Map> & map) const override;
+
     /// @brief Reset the map stored by the map update pipeline
     /// @return FrameworkReturnCode::_SUCCESS if the map is correctly reset, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode resetMap() const override;
+
+    /// @brief Request the point cloud of the global map stored by the map update pipeline
+    /// @param[out] pointCloud: the output point cloud
+    /// @return FrameworkReturnCode::_SUCCESS if the point cloud is available, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getPointCloudRequest(SRef<SolAR::datastructure::PointCloud> & pointCloud) const override;
 
   private:
 

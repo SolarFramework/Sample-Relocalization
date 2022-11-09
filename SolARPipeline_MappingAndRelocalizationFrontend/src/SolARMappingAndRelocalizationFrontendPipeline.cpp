@@ -746,9 +746,34 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
     return FrameworkReturnCode::_SUCCESS;
 }
 
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(SRef<SolAR::datastructure::Map> & map) const
+{
+    if (m_mapupdateService != nullptr) {
+        return m_mapupdateService->getMapRequest(map);
+    }
+    else {
+        return FrameworkReturnCode::_ERROR_;
+    }
+}
+
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() const
 {
-    return m_mapupdateService->resetMap();
+    if (m_mapupdateService != nullptr) {
+        return m_mapupdateService->resetMap();
+    }
+    else {
+        return FrameworkReturnCode::_ERROR_;
+    }
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(SRef<SolAR::datastructure::PointCloud> & pointCloud) const
+{
+    if (m_mapupdateService != nullptr) {
+        return m_mapupdateService->getPointCloudRequest(pointCloud);
+    }
+    else {
+        return FrameworkReturnCode::_ERROR_;
+    }
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
