@@ -35,6 +35,9 @@ namespace xpcf=org::bcom::xpcf;
 
 #define INDEX_USE_CAMERA 0
 
+// UUID for this test client
+std::string gClient_UUID = "";
+
 // Global relocalization and mapping front end Pipeline instance
 SRef<pipeline::IAsyncRelocalizationPipeline> gRelocalizationAndMappingFrontendPipeline = 0;
 
@@ -46,7 +49,11 @@ static void SigInt(int signo) {
     LOG_INFO("Stop relocalization and mapping front end pipeline process");
 
     if (gRelocalizationAndMappingFrontendPipeline != 0)
-        gRelocalizationAndMappingFrontendPipeline->stop();
+        gRelocalizationAndMappingFrontendPipeline->stop(gClient_UUID);
+
+    LOG_INFO("Unregister this client");
+
+    gRelocalizationAndMappingFrontendPipeline->unregisterClient(gClient_UUID);
 
     LOG_INFO("End of test");
 
@@ -66,7 +73,7 @@ int main(int argc, char ** argv)
 
     LOG_ADD_LOG_TO_CONSOLE();
 
-    LOG_SET_DEBUG_LEVEL();
+//    LOG_SET_DEBUG_LEVEL();
 
     // XPCF Component Manager
     SRef<xpcf::IComponentManager> xpcfComponentManager = 0;
@@ -105,9 +112,18 @@ int main(int argc, char ** argv)
             return -1;
         }
 
+        LOG_INFO("Register this client");
+
+        if (gRelocalizationAndMappingFrontendPipeline->registerClient(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Error while registering the client to the front end pipeline");
+            return -1;
+        }
+
+        LOG_INFO("Client UUID = {}", gClient_UUID);
+
         LOG_INFO("Initialize the pipeline");
 
-        if (gRelocalizationAndMappingFrontendPipeline->init() != FrameworkReturnCode::_SUCCESS) {
+        if (gRelocalizationAndMappingFrontendPipeline->init(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
             LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
             return -1;
         }
@@ -127,14 +143,14 @@ int main(int argc, char ** argv)
 
             LOG_INFO("Set camera paremeters for the pipeline");
 
-            if (gRelocalizationAndMappingFrontendPipeline->setCameraParameters(camParams) != FrameworkReturnCode::_SUCCESS) {
+            if (gRelocalizationAndMappingFrontendPipeline->setCameraParameters(gClient_UUID, camParams) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while setting camera parameters for the mapping and relocalization front end pipeline");
                 return -1;
             }
 
             LOG_INFO("Start the pipeline");
 
-            if (gRelocalizationAndMappingFrontendPipeline->start() != FrameworkReturnCode::_SUCCESS) {
+            if (gRelocalizationAndMappingFrontendPipeline->start(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
                 return -1;
             }
@@ -165,7 +181,7 @@ int main(int argc, char ** argv)
 
                     // Send data to mapping and relocalization front end pipeline
                     gRelocalizationAndMappingFrontendPipeline->relocalizeProcessRequest(
-                                {image}, {pose}, timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
+                                gClient_UUID, {image}, {pose}, timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
 
                     if (transform3DStatus == api::pipeline::NEW_3DTRANSFORM) {
                         LOG_INFO("New 3D transformation = {}", transform3D.matrix());
@@ -190,7 +206,11 @@ int main(int argc, char ** argv)
                     LOG_INFO("Stop relocalization and mapping front end pipeline process");
 
                     if (gRelocalizationAndMappingFrontendPipeline != 0)
-                        gRelocalizationAndMappingFrontendPipeline->stop();
+                        gRelocalizationAndMappingFrontendPipeline->stop(gClient_UUID);
+
+                    LOG_INFO("Unregister this client");
+
+                    gRelocalizationAndMappingFrontendPipeline->unregisterClient(gClient_UUID);
 
                     LOG_INFO("End of test");
 
