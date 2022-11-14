@@ -78,49 +78,99 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     void unloadComponent() override final {}
 
+    /// @brief Register a new client and return its UUID to use for future requests
+    /// @param[out] the UUID for this new client
+    /// @return FrameworkReturnCode::_SUCCESS if the client is registered with its UUID, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode registerClient(std::string & uuid) override;
+
+    /// @brief Unregister a client using its UUID
+    /// @param[in] the UUID of the client to unregister
+    /// @return FrameworkReturnCode::_SUCCESS if the client is unregistered, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode unregisterClient(const std::string uuid) override;
+
     /// @brief Initialization of the pipeline
     /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode init() override;
+    FrameworkReturnCode init()
+    {
+        return FrameworkReturnCode::_NOT_IMPLEMENTED;
+    }
+
+    /// @brief Initialization of the pipeline
+    /// @param[in] uuid: UUID of the client
+    /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode init(const std::string uuid) override;
 
     /// @brief Init the pipeline and specify the mode for the pipeline processing
+    /// @param[in] uuid: UUID of the client
     /// @param[in] pipelineMode: mode to use for pipeline processing
     /// @return FrameworkReturnCode::_SUCCESS if the mode is correctly initialized, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode init(PipelineMode pipelineMode) override;
+    FrameworkReturnCode init(const std::string uuid, PipelineMode pipelineMode) override;
+
+    /// @brief Return the current mode used for the pipeline processing
+    /// @param[in] uuid: UUID of the client
+    /// @param[out] pipelineMode: the current pipeline mode
+    /// @return FrameworkReturnCode::_SUCCESS if the method succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getProcessingMode(const std::string uuid, PipelineMode & pipelineMode) const override;
 
     /// @brief Set the camera parameters
-    /// @param[in] cameraParams: the camera parameters (its resolution and its focal)
+    /// @param[in] uuid: UUID of the client
+    /// @param[in] cameraParams the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams) override;
+    FrameworkReturnCode setCameraParameters(const std::string uuid,
+                                            const SolAR::datastructure::CameraParameters & cameraParams) override;
 
     /// @brief Set the camera parameters (use for stereo camera)
+    /// @param[in] uuid: UUID of the client
     /// @param[in] cameraParams1 the camera parameters of the first camera
     /// @param[in] cameraParams2 the camera parameters of the second camera
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams1,
+    FrameworkReturnCode setCameraParameters(const std::string uuid,
+                                            const SolAR::datastructure::CameraParameters & cameraParams1,
                                             const SolAR::datastructure::CameraParameters & cameraParams2) override;
 
     /// @brief Set the rectification parameters (use for stereo camera)
+    /// @param[in] uuid: UUID of the client
     /// @param[in] rectCam1 the rectification parameters of the first camera
     /// @param[in] rectCam2 the rectification parameters of the second camera
     /// @return FrameworkReturnCode::_SUCCESS if the rectification parameters are correctly set, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
+    FrameworkReturnCode setRectificationParameters(const std::string uuid,
+                                                   const SolAR::datastructure::RectificationParameters & rectCam1,
                                                    const SolAR::datastructure::RectificationParameters & rectCam2) override;
 
     /// @brief Get the camera parameters
-    /// @param[out] cameraParams: the camera parameters (its resolution and its focal)
+    /// @param[in] uuid: UUID of the client
+    /// @param[out] cameraParams the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly returned, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode getCameraParameters(SolAR::datastructure::CameraParameters & cameraParams) const override;
+    FrameworkReturnCode getCameraParameters(const std::string uuid,
+                                            SolAR::datastructure::CameraParameters & cameraParams) const override;
 
     /// @brief Start the pipeline
     /// @return FrameworkReturnCode::_SUCCESS if the stard succeed, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode start() override;
+    FrameworkReturnCode start()
+    {
+        return FrameworkReturnCode::_NOT_IMPLEMENTED;
+    }
 
     /// @brief Stop the pipeline.
     /// @return FrameworkReturnCode::_SUCCESS if the stop succeed, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode stop() override;
+    FrameworkReturnCode stop()
+    {
+        return FrameworkReturnCode::_NOT_IMPLEMENTED;
+    }
+
+    /// @brief Start the pipeline
+    /// @param[in] uuid: UUID of the client
+    /// @return FrameworkReturnCode::_SUCCESS if the stard succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode start(const std::string uuid) override;
+
+    /// @brief Stop the pipeline.
+    /// @param[in] uuid: UUID of the client
+    /// @return FrameworkReturnCode::_SUCCESS if the stop succeed, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode stop(const std::string uuid) override;
 
     /// @brief Request the asynchronous relocalization pipeline to process a new image to calculate
     /// the corresponding 3D transformation to the SolAR coordinates system
+    /// @param[in] uuid: UUID of the client
     /// @param[in] images the images to process
     /// @param[in] poses the poses associated to images in the client coordinates system
     /// @param[in] timestamp the timestamp of the image
@@ -129,7 +179,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @param[out] confidence the confidence score of the 3D transformation matrix
     /// @param[out] mappingStatus the status of the current mapping processing
     /// @return FrameworkReturnCode::_SUCCESS if the data are ready to be processed, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
+    FrameworkReturnCode relocalizeProcessRequest(const std::string uuid,
+                                                 const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                  const std::vector<SolAR::datastructure::Transform3Df> & poses,
                                                  const std::chrono::system_clock::time_point & timestamp,
                                                  TransformStatus & transform3DStatus,
@@ -139,36 +190,45 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     /// @brief Request the asynchronous relocalization pipeline to get the 3D transform offset
     /// between the device coordinate system and the SolAR coordinate system
+    /// @param[in] uuid: UUID of the client
     /// @param[out] transform3DStatus the status of the current 3D transformation matrix
     /// @param[out] transform3D the current 3D transformation matrix (if available)
     /// @param[out] confidence the confidence score of the 3D transformation matrix
     /// @return FrameworkReturnCode::_SUCCESS if the 3D transform is available, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode get3DTransformRequest(TransformStatus & transform3DStatus,
+    FrameworkReturnCode get3DTransformRequest(const std::string uuid,
+                                              TransformStatus & transform3DStatus,
                                               SolAR::datastructure::Transform3Df & transform3D,
                                               float_t & confidence) override;
 
     /// @brief Return the last pose processed by the pipeline
+    /// @param[in] uuid: UUID of the client
     /// @param[out] pose the last pose if available
     /// @param[in] poseType the type of the requested pose
     ///            - in the SolAR coordinate system (by default)
     ///            - in the device coordinate system
     /// @return FrameworkReturnCode::_SUCCESS if the last pose is available, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode getLastPose(SolAR::datastructure::Transform3Df & pose,
+    FrameworkReturnCode getLastPose(const std::string uuid,
+                                    SolAR::datastructure::Transform3Df & pose,
                                     const PoseType poseType = SOLAR_POSE) const override;
 
     /// @brief Request the global map stored by the map update pipeline
+    /// @param[in] uuid: UUID of the client
     /// @param[out] map: the output global map
     /// @return FrameworkReturnCode::_SUCCESS if the global map is available, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode getMapRequest(SRef<SolAR::datastructure::Map> & map) const override;
+    FrameworkReturnCode getMapRequest(const std::string uuid,
+                                      SRef<SolAR::datastructure::Map> & map) const override;
 
     /// @brief Reset the map stored by the map update pipeline
+    /// @param[in] uuid: UUID of the client
     /// @return FrameworkReturnCode::_SUCCESS if the map is correctly reset, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode resetMap() const override;
+    FrameworkReturnCode resetMap(const std::string uuid) const override;
 
     /// @brief Request the point cloud of the global map stored by the map update pipeline
+    /// @param[in] uuid: UUID of the client
     /// @param[out] pointCloud: the output point cloud
     /// @return FrameworkReturnCode::_SUCCESS if the point cloud is available, else FrameworkReturnCode::_ERROR_
-    FrameworkReturnCode getPointCloudRequest(SRef<SolAR::datastructure::PointCloud> & pointCloud) const override;
+    FrameworkReturnCode getPointCloudRequest(const std::string uuid,
+                                             SRef<SolAR::datastructure::PointCloud> & pointCloud) const override;
 
   private:
 

@@ -18,6 +18,10 @@
 #include "SolARMappingAndRelocalizationFrontendPipeline.h"
 #include "core/Log.h"
 #include "boost/log/core/core.hpp"
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/random_generator.hpp>
 
 namespace xpcf  = org::bcom::xpcf;
 
@@ -84,7 +88,6 @@ void SolARMappingAndRelocalizationFrontendPipeline::onInjected() {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::onInjected");
 
     // Get properties
-
 }
 
 SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFrontendPipeline()
@@ -96,7 +99,21 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
     delete m_mappingTask;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClient(std::string & uuid)
+{
+    boost::uuids::uuid boost_uuid = boost::uuids::random_generator()();
+
+    uuid = boost::lexical_cast<std::string>(boost_uuid);
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterClient(const std::string uuid)
+{
+    return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const std::string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
 
@@ -205,7 +222,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode pipelineMode)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const std::string uuid, PipelineMode pipelineMode)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode)");
 
@@ -214,7 +231,15 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(Pipeline
     return init();
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const CameraParameters & cameraParams)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const std::string uuid,
+                                                                                     PipelineMode & pipelineMode) const
+{
+    pipelineMode = m_PipelineMode;
+
+    return FrameworkReturnCode::_SUCCESS;
+}
+
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const std::string uuid, const CameraParameters & cameraParams)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters");
 
@@ -288,7 +313,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const SolAR::datastructure::CameraParameters & cameraParams1,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const std::string uuid,
+                                                                                       const SolAR::datastructure::CameraParameters & cameraParams1,
                                                                                        const SolAR::datastructure::CameraParameters & cameraParams2)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(stereo)");
@@ -319,10 +345,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         }
     }
 
-    return setCameraParameters(cameraParams1);
+    return setCameraParameters(uuid, cameraParams1);
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const SolAR::datastructure::RectificationParameters & rectCam1,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const std::string uuid,
+                                                                                              const SolAR::datastructure::RectificationParameters & rectCam1,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam2)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters");
@@ -359,7 +386,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(CameraParameters & cameraParams) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(const std::string uuid,
+                                                                                       CameraParameters & cameraParams) const
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters");
 
@@ -390,7 +418,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const std::string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::start");
 
@@ -532,7 +560,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const std::string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::stop");
 
@@ -646,7 +674,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const std::string uuid,
+                                                                                            const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                                                             const std::vector<SolAR::datastructure::Transform3Df> & poses,
                                                                                             const std::chrono::system_clock::time_point & timestamp,
                                                                                             TransformStatus & transform3DStatus,
@@ -700,10 +729,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(
-                                            TransformStatus & transform3DStatus,
-                                            SolAR::datastructure::Transform3Df & transform3D,
-                                            float_t & confidence)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(const std::string uuid,
+                                                                                         TransformStatus & transform3DStatus,
+                                                                                         SolAR::datastructure::Transform3Df & transform3D,
+                                                                                         float_t & confidence)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest");
 
@@ -725,9 +754,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
-                                SolAR::datastructure::Transform3Df & pose,
-                                const PoseType poseType) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(const std::string uuid,
+                                                                               SolAR::datastructure::Transform3Df & pose,
+                                                                               const PoseType poseType) const
 {
     if (!m_started) {
         LOG_ERROR("Pipeline not started!");
@@ -762,7 +791,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(SRef<SolAR::datastructure::Map> & map) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(const std::string uuid,
+                                                                                 SRef<SolAR::datastructure::Map> & map) const
 {
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->getMapRequest(map);
@@ -772,7 +802,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(const std::string uuid) const
 {
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->resetMap();
@@ -782,7 +812,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() co
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(SRef<SolAR::datastructure::PointCloud> & pointCloud) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(const std::string uuid,
+                                                                                        SRef<SolAR::datastructure::PointCloud> & pointCloud) const
 {
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->getPointCloudRequest(pointCloud);
