@@ -228,7 +228,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
 
     m_PipelineMode = pipelineMode;
 
-    return init();
+    return init(uuid);
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const std::string uuid,
