@@ -123,6 +123,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// the corresponding 3D transformation to the SolAR coordinates system
     /// @param[in] images the images to process
     /// @param[in] poses the poses associated to images in the client coordinates system
+    /// @param[in] fixedPose the input poses are considered as ground truth
     /// @param[in] timestamp the timestamp of the image
     /// @param[out] transform3DStatus the status of the current 3D transformation matrix
     /// @param[out] transform3D the current 3D transformation matrix (if available)
@@ -131,6 +132,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the data are ready to be processed, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                  const std::vector<SolAR::datastructure::Transform3Df> & poses,
+                                                 bool fixedPose,
                                                  const std::chrono::system_clock::time_point & timestamp,
                                                  TransformStatus & transform3DStatus,
                                                  SolAR::datastructure::Transform3Df & transform3D,
