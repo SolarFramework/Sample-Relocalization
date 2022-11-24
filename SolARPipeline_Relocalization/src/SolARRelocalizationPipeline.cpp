@@ -35,6 +35,7 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInterface<api::pipeline::IRelocalizationPipeline>(this);
         LOG_DEBUG("Components injection declaration");        
         declareInjectable<storage::IMapManager>(m_mapManager);
+        declareInjectable<api::pipeline::IServiceManagerPipeline>(m_serviceManager, true);
         declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapUpdatePipeline, true);
         declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
         declareInjectable<api::features::IDescriptorsExtractorFromImage>(m_descriptorExtractor);
@@ -77,6 +78,42 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
     if (m_started)
         stop();
 
+    if (m_initOK) {
+        LOG_WARNING("Pipeline has already been initialized");
+        return FrameworkReturnCode::_SUCCESS;
+    }
+
+    if (m_serviceManager != nullptr) {
+
+        LOG_DEBUG("Service Manager URL = {}",
+                 m_serviceManager->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+
+        try {
+            // Get the Map Update URL from the Service Manager
+            std::string mapUpdateURL = "";
+
+            if (m_serviceManager->getService(api::pipeline::ServiceType::MAP_UPDATE_SERVICE, mapUpdateURL)
+                    != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Can not get Map Update URL from Service Manager");
+                return FrameworkReturnCode::_ERROR_;
+            }
+
+            LOG_DEBUG("The Service Manager returns an URL for the Map Update service: {}", mapUpdateURL);
+
+            // Set Map Update URL
+            m_mapUpdatePipeline->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")
+                    ->setStringValue(mapUpdateURL.c_str());
+
+        }  catch (const std::exception &e) {
+            LOG_ERROR("Exception raised during remote request to Service Manager: {}", e.what());
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    else {
+        LOG_ERROR("Service Manager not defined");
+        return FrameworkReturnCode::_ERROR_;
+    }
+
     if (m_mapUpdatePipeline != nullptr) {
 
         LOG_DEBUG("Map Update pipeline URL = {}",
@@ -94,11 +131,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::init()
     }
     else {
         LOG_ERROR("Map Update pipeline not defined");
-    }
-
-    if (m_initOK) {
-        LOG_WARNING("Pipeline has already been initialized");
-        return FrameworkReturnCode::_SUCCESS;
+        return FrameworkReturnCode::_ERROR_;
     }
 
     m_initOK = true;

@@ -8,6 +8,20 @@
                 </component>
         </module>
 
+        <!-- Module generated from SolARFramework by xpcf_grpc_gen -->
+        <module uuid="a0f522d1-b70e-4d0f-ad78-84e78a9af6bf" name="SolARFrameworkGRPCRemote" description="xpcf remoting module for project SolARFramework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARFrameworkGRPCRemote/1.0.0/lib/x86_64/shared">
+                <component uuid="600ca5f4-6432-11ed-81ce-0242ac120002" name="IServiceManagerPipeline_grpcProxy" description="IServiceManagerPipeline_grpcProxy">
+                    <interface uuid="6c5b9edc-c78b-47fd-8cb2-2bf8d7ede4ea" name="XPCF::IInjectable" description="Provides dependency injection interface"/>
+                    <interface uuid="98dba14f-6ef9-462e-a387-34756b4cba80" name="XPCF::IConfigurable" description="Provides generic configuration ability to any component through metadata parameters"/>
+                    <interface uuid="48c83eda-6432-11ed-81ce-0242ac120002" name="IServiceManagerPipeline" description="The interface to define the service manager"/>
+                </component>
+                <component uuid="d9da863c-c9ff-4562-a3a2-329ac1f44008" name="IMapUpdatePipeline_grpcProxy" description="IMapUpdatePipeline_grpcProxy grpc client proxy component">
+                    <interface uuid="6c5b9edc-c78b-47fd-8cb2-2bf8d7ede4ea" name="XPCF::IInjectable" description="Provides dependency injection interface"/>
+                    <interface uuid="98dba14f-6ef9-462e-a387-34756b4cba80" name="XPCF::IConfigurable" description="Provides generic configuration ability to any component through metadata parameters"/>
+                    <interface uuid="49cbd32c-6dfa-4155-b151-7261dd13f552" name="IMapUpdatePipeline" description="The interface to define a map update processing pipeline"/>
+                </component>
+        </module>
+
         <module uuid="15e1990b-86b2-445c-8194-0cbe80ede970" name="SolARModuleOpenCV" description="SolARModuleOpenCV" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenCV/1.0.0/lib/x86_64/shared">
                 <component uuid="e81c7e4e-7da6-476a-8eba-078b43071272" name="SolARKeypointDetectorOpencv" description="SolARKeypointDetectorOpencv">
                         <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
@@ -117,6 +131,16 @@
         </factory>
 
         <properties>
+                <!-- gRPC proxy configuration-->
+                <configure component="IServiceManagerPipeline_grpcProxy">
+                    <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50059"/>
+                    <property name="channelCredentials" access="rw" type="uint" value="0"/>
+                </configure>
+                <configure component="IMapUpdatePipeline_grpcProxy">
+                    <property name="channelUrl" access="rw" type="string" value=""/>
+                    <property name="channelCredentials" access="rw" type="uint" value="0"/>
+                </configure>
+
                 <configure component="SolARMapManager">
                         <property name="directory" type="string" value="../../../../../data/map_hololens/mapA"/>
                         <property name="identificationFileName" type="string" value="identification.bin"/>
