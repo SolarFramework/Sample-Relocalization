@@ -46,7 +46,6 @@
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
 #include "api/geom/IUndistortPoints.h"
-#include "api/pipeline/IServiceManagerPipeline.h"
 #include "api/pipeline/IMapUpdatePipeline.h"
 
 using namespace SolAR;
@@ -152,7 +151,6 @@ private:
 	// storage components
     SRef<reloc::IKeyframeRetriever>                         m_kfRetriever;
     SRef<storage::IMapManager>								m_mapManager;
-    SRef<pipeline::IServiceManagerPipeline>                 m_serviceManager;
     SRef<pipeline::IMapUpdatePipeline>                      m_mapUpdatePipeline;
     SRef<features::IDescriptorsExtractorFromImage>          m_descriptorExtractor;
     SRef<features::IDescriptorMatcher>                      m_matcher;
