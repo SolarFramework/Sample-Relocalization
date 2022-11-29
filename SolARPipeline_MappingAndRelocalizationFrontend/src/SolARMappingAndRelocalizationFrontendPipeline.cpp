@@ -881,7 +881,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
 
-        if (m_mappingStereoService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (m_mappingStereoService->mappingProcessRequest(images, poses, false, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping stereo status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
@@ -897,7 +897,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     else {
         LOG_DEBUG("Mono mapping processing");
 
-        if (m_mappingService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (m_mappingService->mappingProcessRequest(images, poses, false, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
