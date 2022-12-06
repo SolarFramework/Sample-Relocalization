@@ -23,6 +23,16 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/random_generator.hpp>
 
+#include <iostream>
+#include <fstream>
+
+using namespace std;
+
+const string RELOCALIZATION_MARKERS_CONF_FILE = "./SolARService_MappingAndRelocFrontend_RelocMarkers_conf.xml";
+const string RELOCALIZATION_CONF_FILE = "./SolARService_MappingAndRelocFrontend_Relocalization_conf.xml";
+const string MAPPING_CONF_FILE = "./SolARService_MappingAndRelocFrontend_Mapping_conf.xml";
+const string MAPPING_STEREO_CONF_FILE = "./SolARService_MappingAndRelocFrontend_Mapping_Stereo_conf.xml";
+
 namespace xpcf  = org::bcom::xpcf;
 
 namespace SolAR {
@@ -38,10 +48,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareInterface<api::pipeline::IAsyncRelocalizationPipeline>(this);
 
         LOG_DEBUG("Components injection declaration");        
-        declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, "Mapping",  true);
-        declareInjectable<api::pipeline::IMappingPipeline>(m_mappingStereoService, "StereoMapping",  true);
-        declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, "RelocalizationMap", true);
-        declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationMarkerService, "RelocalizationMarkers", true);
+        declareInjectable<api::pipeline::IServiceManagerPipeline>(m_serviceManager, true);
         declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapupdateService, true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
@@ -59,13 +66,13 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
             m_relocalizationTask = new xpcf::DelegateTask(fnRelocalizationProcessing);
         }
 
-        // Relocalization Marker processing function
-        if (m_relocalizationMarkerTask == nullptr) {
-            auto fnRelocalizationMarkerProcessing = [&]() {
-                processRelocalizationMarker();
+        // Relocalization Markers processing function
+        if (m_relocalizationMarkersTask == nullptr) {
+            auto fnRelocalizationMarkersProcessing = [&]() {
+                processRelocalizationMarkers();
             };
 
-            m_relocalizationMarkerTask = new xpcf::DelegateTask(fnRelocalizationMarkerProcessing);
+            m_relocalizationMarkersTask = new xpcf::DelegateTask(fnRelocalizationMarkersProcessing);
         }
 
         // Mapping processing function
@@ -95,25 +102,191 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline destructor")
 
     delete m_relocalizationTask;
-    delete m_relocalizationMarkerTask;
+    delete m_relocalizationMarkersTask;
     delete m_mappingTask;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClient(std::string & uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClient(string & uuid)
 {
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::registerClient");
+
     boost::uuids::uuid boost_uuid = boost::uuids::random_generator()();
 
-    uuid = boost::lexical_cast<std::string>(boost_uuid);
+    uuid = boost::lexical_cast<string>(boost_uuid);
+
+    Client_Services clientServices;
+    clientServices.relocalizationService = nullptr;
+    clientServices.mappingService = nullptr;
+    clientServices.mappingStereoService = nullptr;
+
+    try {
+        if (m_serviceManager != nullptr) {
+
+            SRef<xpcf::IComponentManager> cmpMgr = xpcf::getComponentManagerInstance();
+
+            // Try to get and lock a Relocalization Service URL for the new client
+
+            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_SERVICE, uuid, m_relocalizationURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Relocalization Service URL given by the Service Manager:{}", m_relocalizationURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::RELOCALIZATION_SERVICE, m_relocalizationURL);
+
+                if (cmpMgr->load(RELOCALIZATION_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
+                    return FrameworkReturnCode::_ERROR_;
+                }
+
+                // Get the Relocalization Service proxy
+                clientServices.relocalizationService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
+
+                LOG_DEBUG("A Relocalization service ({}) has been locked for the client", m_relocalizationURL);
+            }
+            else {
+                LOG_ERROR("No available Relocalization service");
+                return FrameworkReturnCode::_ERROR_;
+            }
+
+            // Try to get and lock a Relocalization Markers Service URL for the new client
+            string relocalizationMarkersURL = "";
+
+            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, uuid, relocalizationMarkersURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Relocalization Markers Service URL given by the Service Manager:{}", relocalizationMarkersURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::RELOCALIZATION_MARKERS_SERVICE, relocalizationMarkersURL);
+
+                if (cmpMgr->load(RELOCALIZATION_MARKERS_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_MARKERS_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, uuid);
+                    return FrameworkReturnCode::_ERROR_;
+                }
+
+                // Get the Relocalization Markers Service proxy
+                clientServices.relocalizationMarkersService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
+
+                LOG_DEBUG("A Relocalization Markers service ({}) has been locked for the client", relocalizationMarkersURL);
+            }
+            else {
+                LOG_ERROR("No available Relocalization Markers service");
+                return FrameworkReturnCode::_ERROR_;
+            }
+
+            // Try to get and lock a Mapping Service URL for the new client
+            string mappingURL = "";
+
+            if (m_serviceManager->getAndLockService(ServiceType::MAPPING_SERVICE, uuid, mappingURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Mapping Service URL given by the Service Manager:{}", mappingURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::MAPPING_SERVICE, mappingURL);
+
+                if (cmpMgr->load(MAPPING_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
+                    m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
+                    return FrameworkReturnCode::_ERROR_;
+                }
+
+                // Get the Mapping Service proxy
+                clientServices.mappingService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
+
+                LOG_DEBUG("A Mapping service ({}) has been locked for the client", mappingURL);
+            }
+            else {
+                LOG_ERROR("No available Mapping service");
+                m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
+                return FrameworkReturnCode::_ERROR_;
+            }
+
+            // Try to get and lock a Mapping Stereo Service URL for the new client
+            string mappingStereoURL = "";
+
+            if (m_serviceManager->getAndLockService(ServiceType::MAPPING_STEREO_SERVICE, uuid, mappingStereoURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Mapping Stereo Service URL given by the Service Manager:{}", mappingStereoURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::MAPPING_STEREO_SERVICE, mappingStereoURL);
+
+                if (cmpMgr->load(MAPPING_STEREO_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_STEREO_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
+                    m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
+                    m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, uuid);
+                    return FrameworkReturnCode::_ERROR_;
+                }
+
+                // Get the Mapping Stereo Service proxy
+                clientServices.mappingStereoService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
+
+                LOG_DEBUG("A Mapping Stereo service ({}) has been locked for the client", mappingStereoURL);
+            }
+            else {
+                LOG_WARNING("No available Stereo Mapping service => use mono camera mapping instead");
+            }
+        }
+        else {
+            LOG_ERROR("Service Manager instance not created");
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    catch (xpcf::Exception & e) {
+        LOG_ERROR("The following exception has been caught {}", e.what());
+        return FrameworkReturnCode::_ERROR_;
+    }
+
+    // Add the new client and its services to the map
+    unique_lock<mutex> lock(m_mutexClientMap);
+    m_clientsMap.insert(pair<string, Client_Services>(uuid, clientServices));
+
+    LOG_DEBUG("New client registered with UUID: {}", uuid);
 
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterClient(const std::string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterClient(const string uuid)
 {
+    LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::unregisterClient");
+
+    // Remove the client and its services from the map
+    unique_lock<mutex> lock(m_mutexClientMap);
+    auto it = m_clientsMap.find(uuid);
+    if (it != m_clientsMap.end())
+        m_clientsMap.erase(it);
+    lock.unlock();
+
+    LOG_DEBUG("Client unregistered with UUID: {}", uuid);
+
+    try {
+        if (m_serviceManager != nullptr) {
+            m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
+            m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, uuid);
+            m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
+            m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, uuid);
+        }
+        else {
+            LOG_ERROR("Service Manager instance not created");
+            return FrameworkReturnCode::_ERROR_;
+        }
+    }
+    catch (xpcf::Exception & e) {
+        LOG_ERROR("The following exception has been caught {}", e.what());
+        return FrameworkReturnCode::_ERROR_;
+    }
+
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const std::string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
 
@@ -121,19 +294,33 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     if (m_started)
         stop();
 
-    if (m_relocalizationService != nullptr){
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_SERVICE));
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationMarkersService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_MARKERS_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_STEREO_SERVICE));
+
+    if (relocalizationService != nullptr){
 
         LOG_DEBUG("Relocalization service URL = {}",
-                 m_relocalizationService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+                 relocalizationService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
         LOG_DEBUG("Initialize the relocalization service");
 
         try {
-            if (m_relocalizationService->init() != FrameworkReturnCode::_SUCCESS) {
+            if (relocalizationService->init() != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while initializing the relocalization service");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
+        }  catch (const exception &e) {
             LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
         }
@@ -143,43 +330,43 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_relocalizationMarkerService != nullptr){
+    if (relocalizationMarkersService != nullptr){
 
-        LOG_DEBUG("Relocalization marker service URL = {}",
-                 m_relocalizationMarkerService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+        LOG_DEBUG("Relocalization markers service URL = {}",
+                 relocalizationMarkersService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
-        LOG_DEBUG("Initialize the relocalization marker service");
+        LOG_DEBUG("Initialize the relocalization markers service");
 
         try {
-            if (m_relocalizationMarkerService->init() != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while initializing the relocalization marker service");
+            if (relocalizationMarkersService->init() != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Error while initializing the relocalization markers service");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+        }  catch (const exception &e) {
+            LOG_ERROR("Exception raised during remote request to the relocalization markers service: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
-        LOG_ERROR("Relocalization marker service instance not created");
+        LOG_ERROR("Relocalization markers service instance not created");
         return FrameworkReturnCode::_ERROR_;
     }
 
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        if (m_mappingService != nullptr){
+        if (mappingService != nullptr){
 
             LOG_DEBUG("Mapping service URL = {}",
-                     m_mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+                     mappingService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
             LOG_DEBUG("Initialize the mapping service");
 
             try {
-                if (m_mappingService->init() != FrameworkReturnCode::_SUCCESS) {
+                if (mappingService->init(m_relocalizationURL) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while initializing the mapping service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -189,21 +376,21 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_mappingStereoService != nullptr){
+        if (mappingStereoService != nullptr){
 
             LOG_DEBUG("Mapping Stereo service URL = {}",
-                     m_mappingStereoService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
+                     mappingStereoService->bindTo<xpcf::IConfigurable>()->getProperty("channelUrl")->getStringValue());
 
             LOG_DEBUG("Initialize the mapping stereo service");
 
             try {
-                if (m_mappingStereoService->init() != FrameworkReturnCode::_SUCCESS) {
+                if (mappingStereoService->init(m_relocalizationURL) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while initializing the mapping stereo service");
                 }
                 else {
                     m_stereoMappingOK = true;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_DEBUG("Exception raised during remote request to the mapping stereo service: {}", e.what());
             }
         }
@@ -222,7 +409,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const std::string uuid, PipelineMode pipelineMode)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string uuid, PipelineMode pipelineMode)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode)");
 
@@ -231,7 +418,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     return init(uuid);
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const string uuid,
                                                                                      PipelineMode & pipelineMode) const
 {
     pipelineMode = m_PipelineMode;
@@ -239,7 +426,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessing
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const std::string uuid, const CameraParameters & cameraParams)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string uuid, const CameraParameters & cameraParams)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters");
 
@@ -248,16 +435,27 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_relocalizationService != nullptr){
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_SERVICE));
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationMarkersService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_MARKERS_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_SERVICE));
+
+    if (relocalizationService != nullptr){
 
         LOG_DEBUG("Set camera parameters for the relocalization service");
 
         try {
-            if (m_relocalizationService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+            if (relocalizationService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while setting camera parameters for the relocalization service");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
+        }  catch (const exception &e) {
             LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
         }
@@ -267,37 +465,37 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_relocalizationMarkerService != nullptr){
+    if (relocalizationMarkersService != nullptr){
 
-        LOG_DEBUG("Set camera parameters for the relocalization marker service");
+        LOG_DEBUG("Set camera parameters for the relocalization markers service");
 
         try {
-            if (m_relocalizationMarkerService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
-                LOG_ERROR("Error while setting camera parameters for the relocalization marker service");
+            if (relocalizationMarkersService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Error while setting camera parameters for the relocalization markers service");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
-            LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+        }  catch (const exception &e) {
+            LOG_ERROR("Exception raised during remote request to the relocalization markers service: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
         }
     }
     else {
-        LOG_ERROR("Relocalization marker service instance not created");
+        LOG_ERROR("Relocalization markers service instance not created");
         return FrameworkReturnCode::_ERROR_;
     }
 
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-        if (m_mappingService != nullptr){
+        if (mappingService != nullptr){
 
             LOG_DEBUG("Set camera parameters for the mapping service");
 
             try {
-                if (m_mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+                if (mappingService->setCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while setting camera parameters for the mapping service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -313,7 +511,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string uuid,
                                                                                        const SolAR::datastructure::CameraParameters & cameraParams1,
                                                                                        const SolAR::datastructure::CameraParameters & cameraParams2)
 {
@@ -324,6 +522,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
+    // Get service instances for current client
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_STEREO_SERVICE));
+
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
         if (m_stereoMappingOK){
@@ -331,11 +534,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
             LOG_DEBUG("Set camera parameters for the mapping stereo service");
 
             try {
-                if (m_mappingStereoService->setCameraParameters(cameraParams1, cameraParams2) != FrameworkReturnCode::_SUCCESS) {
+                if (mappingStereoService->setCameraParameters(cameraParams1, cameraParams2) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while setting camera parameters for the mapping stereo service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -348,7 +551,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return setCameraParameters(uuid, cameraParams1);
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const string uuid,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam1,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam2)
 {
@@ -359,6 +562,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
         return FrameworkReturnCode::_ERROR_;
     }
 
+    // Get service instances for current client
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_STEREO_SERVICE));
+
     if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
         if (m_stereoMappingOK){
@@ -366,11 +574,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
             LOG_DEBUG("Set rectification parameters for the mapping stereo service");
 
             try {
-                if (m_mappingStereoService->setRectificationParameters(rectCam1, rectCam2) != FrameworkReturnCode::_SUCCESS) {
+                if (mappingStereoService->setRectificationParameters(rectCam1, rectCam2) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while setting rectification parameters for the mapping stereo service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -386,7 +594,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(const string uuid,
                                                                                        CameraParameters & cameraParams) const
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters");
@@ -396,16 +604,21 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
-    if (m_relocalizationService != nullptr){
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_SERVICE));
+
+    if (relocalizationService != nullptr){
 
         LOG_DEBUG("Get camera parameters from the relocalization service");
 
         try {
-            if (m_relocalizationService->getCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
+            if (relocalizationService->getCameraParameters(cameraParams) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while getting camera parameters from the relocalization service");
                 return FrameworkReturnCode::_ERROR_;
             }
-        }  catch (const std::exception &e) {
+        }  catch (const exception &e) {
             LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
             return FrameworkReturnCode::_ERROR_;
         }
@@ -418,7 +631,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const std::string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::start");
 
@@ -431,6 +644,20 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
         LOG_ERROR("Camera parameters have not been set");
         return FrameworkReturnCode::_ERROR_;
     }
+
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_SERVICE));
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationMarkersService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_MARKERS_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_STEREO_SERVICE));
 
     if (!m_started) {
 
@@ -451,26 +678,26 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
 
         LOG_DEBUG("Empty buffers");
 
-        std::pair<SRef<Image>, Transform3Df> imagePose;
+        tuple<string, SRef<Image>, Transform3Df> imagePose;
         m_dropBufferRelocalization.tryPop(imagePose);
-        m_dropBufferRelocalizationMarker.tryPop(imagePose);
-        std::pair<std::vector<SRef<Image>>, std::vector<Transform3Df>> imagePoses;
+        m_dropBufferRelocalizationMarkers.tryPop(imagePose);
+        tuple<string, vector<SRef<Image>>, vector<Transform3Df>> imagePoses;
         m_dropBufferMapping.tryPop(imagePoses);
 /*
         m_dropBufferRelocalization.clear();
-        m_dropBufferRelocalizationMarker.clear();
+        m_dropBufferRelocalizationMarkers.clear();
         m_dropBufferMapping.clear();
 */
-        if (m_relocalizationService != nullptr){
+        if (relocalizationService != nullptr){
 
             LOG_DEBUG("Start the relocalization service");
 
             try {
-                if (m_relocalizationService->start() != FrameworkReturnCode::_SUCCESS) {
+                if (relocalizationService->start() != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while starting the relocalization service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -480,37 +707,37 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_relocalizationMarkerService != nullptr){
+        if (relocalizationMarkersService != nullptr){
 
-            LOG_DEBUG("Start the relocalization marker service");
+            LOG_DEBUG("Start the relocalization markers service");
 
             try {
-                if (m_relocalizationMarkerService->start() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while starting the relocalization marker service");
+                if (relocalizationMarkersService->start() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while starting the relocalization markers service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+            }  catch (const exception &e) {
+                LOG_ERROR("Exception raised during remote request to the relocalization markers service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
         }
         else {
-            LOG_ERROR("Relocalization marker service instance not created");
+            LOG_ERROR("Relocalization markers service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
 
         if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            if (m_mappingService != nullptr){
+            if (mappingService != nullptr){
 
                 LOG_DEBUG("Start the mapping service");
 
                 try {
-                    if (m_mappingService->start() != FrameworkReturnCode::_SUCCESS) {
+                    if (mappingService->start() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while starting the mapping service");
                         return FrameworkReturnCode::_ERROR_;
                     }
-                }  catch (const std::exception &e) {
+                }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
@@ -525,11 +752,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
                 LOG_DEBUG("Start the mapping stereo service");
 
                 try {
-                    if (m_mappingStereoService->start() != FrameworkReturnCode::_SUCCESS) {
+                    if (mappingStereoService->start() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while starting the mapping stereo service");
                         return FrameworkReturnCode::_ERROR_;
                     }
-                }  catch (const std::exception &e) {
+                }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
@@ -542,7 +769,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
         if (!m_tasksStarted) {
             LOG_DEBUG("Start relocalization task");
             m_relocalizationTask->start();
-            m_relocalizationMarkerTask->start();
+            m_relocalizationMarkersTask->start();
 
             LOG_DEBUG("Start mapping task");
             m_mappingTask->start();
@@ -560,7 +787,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const std::string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const string uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::stop");
 
@@ -574,6 +801,20 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
         return FrameworkReturnCode::_ERROR_;
     }
 
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_SERVICE));
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationMarkersService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(uuid, ServiceType::RELOCALIZATION_MARKERS_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(uuid, ServiceType::MAPPING_STEREO_SERVICE));
+
     if (m_started) {
 
         m_started = false;
@@ -581,7 +822,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
         if (m_tasksStarted) {
             LOG_DEBUG("Stop relocalization task");
             m_relocalizationTask->stop();
-            m_relocalizationMarkerTask->stop();
+            m_relocalizationMarkersTask->stop();
 
             LOG_DEBUG("Stop mapping task");
             m_mappingTask->stop();
@@ -589,16 +830,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
             m_tasksStarted = false;
         }
 
-        if (m_relocalizationService != nullptr){
+        if (relocalizationService != nullptr){
 
             LOG_DEBUG("Stop the relocalization service");
 
             try {
-                if (m_relocalizationService->stop() != FrameworkReturnCode::_SUCCESS) {
+                if (relocalizationService->stop() != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while stopping the relocalization service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
+            }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
@@ -608,37 +849,37 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
             return FrameworkReturnCode::_ERROR_;
         }
 
-        if (m_relocalizationMarkerService != nullptr){
+        if (relocalizationMarkersService != nullptr){
 
-            LOG_DEBUG("Stop the relocalization marker service");
+            LOG_DEBUG("Stop the relocalization markers service");
 
             try {
-                if (m_relocalizationMarkerService->stop() != FrameworkReturnCode::_SUCCESS) {
-                    LOG_ERROR("Error while stopping the relocalization marker service");
+                if (relocalizationMarkersService->stop() != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Error while stopping the relocalization markers service");
                     return FrameworkReturnCode::_ERROR_;
                 }
-            }  catch (const std::exception &e) {
-                LOG_ERROR("Exception raised during remote request to the relocalization marker service: {}", e.what());
+            }  catch (const exception &e) {
+                LOG_ERROR("Exception raised during remote request to the relocalization markers service: {}", e.what());
                 return FrameworkReturnCode::_ERROR_;
             }
         }
         else {
-            LOG_ERROR("Relocalization marker service instance not created");
+            LOG_ERROR("Relocalization markers service instance not created");
             return FrameworkReturnCode::_ERROR_;
         }
 
         if (m_PipelineMode == RELOCALIZATION_AND_MAPPING){
 
-            if (m_mappingService != nullptr){
+            if (mappingService != nullptr){
 
                 LOG_DEBUG("Stop the mapping service");
 
                 try {
-                    if (m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
+                    if (mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while stopping the mapping service");
                         return FrameworkReturnCode::_ERROR_;
                     }
-                }  catch (const std::exception &e) {
+                }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
@@ -653,11 +894,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
                 LOG_DEBUG("Stop the mapping stereo service");
 
                 try {
-                    if (m_mappingStereoService->stop() != FrameworkReturnCode::_SUCCESS) {
+                    if (mappingStereoService->stop() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while stopping the mapping stereo service");
                         return FrameworkReturnCode::_ERROR_;
                     }
-                }  catch (const std::exception &e) {
+                }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
                     return FrameworkReturnCode::_ERROR_;
                 }
@@ -674,10 +915,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const std::string uuid,
-                                                                                            const std::vector<SRef<SolAR::datastructure::Image>> & images,
-                                                                                            const std::vector<SolAR::datastructure::Transform3Df> & poses,
-                                                                                            const std::chrono::system_clock::time_point & timestamp,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const string uuid,
+                                                                                            const vector<SRef<SolAR::datastructure::Image>> & images,
+                                                                                            const vector<SolAR::datastructure::Transform3Df> & poses,
+                                                                                            const chrono::system_clock::time_point & timestamp,
                                                                                             TransformStatus & transform3DStatus,
                                                                                             SolAR::datastructure::Transform3Df & transform3D,
                                                                                             float_t & confidence,
@@ -702,14 +943,14 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             // Relocalization
             if (checkNeedReloc()){
                 LOG_DEBUG("Push image and pose for relocalization task");
-                m_dropBufferRelocalization.push(std::make_pair(images[0], poses[0]));
-                m_dropBufferRelocalizationMarker.push(std::make_pair(images[0], poses[0]));
+                m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
+                m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
             }
 
             // Mapping if the pipeline mode is mapping and found 3D Transform
             if ((m_PipelineMode == RELOCALIZATION_AND_MAPPING) && (m_T_M_W_status != NO_3DTRANSFORM)) {
                 LOG_DEBUG("Push image and pose for mapping task");
-                m_dropBufferMapping.push(std::make_pair(images, poses));
+                m_dropBufferMapping.push(make_tuple(uuid, images, poses));
             }
         }
     }
@@ -729,7 +970,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(const string uuid,
                                                                                          TransformStatus & transform3DStatus,
                                                                                          SolAR::datastructure::Transform3Df & transform3D,
                                                                                          float_t & confidence)
@@ -754,7 +995,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(const string uuid,
                                                                                SolAR::datastructure::Transform3Df & pose,
                                                                                const PoseType poseType) const
 {
@@ -763,7 +1004,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(c
         return FrameworkReturnCode::_ERROR_;
     }
     if (!m_lastPose.matrix().isZero()) {
-        std::unique_lock<std::mutex> lock(m_mutexLastPose);
+        unique_lock<mutex> lock(m_mutexLastPose);
         if (poseType == DEVICE_POSE) {
             // Return last pose in device coordinate system
             pose = m_lastPose;
@@ -791,7 +1032,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(c
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(const string uuid,
                                                                                  SRef<SolAR::datastructure::Map> & map) const
 {
     if (m_mapupdateService != nullptr) {
@@ -802,7 +1043,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(const std::string uuid) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(const string uuid) const
 {
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->resetMap();
@@ -812,7 +1053,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(cons
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(const std::string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(const string uuid,
                                                                                         SRef<SolAR::datastructure::PointCloud> & pointCloud) const
 {
     if (m_mapupdateService != nullptr) {
@@ -823,16 +1064,115 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloud
     }
 }
 
+// Private
+
+void SolARMappingAndRelocalizationFrontendPipeline::createConfigurationFile(const ServiceType serviceType,
+                                                                            const string serviceURL) const
+{
+    LOG_DEBUG("Create service configuration file with URL: {}", serviceURL);
+
+    // Open/create configuration file
+
+    string filePath = "";
+
+    if (serviceType == ServiceType::RELOCALIZATION_SERVICE)
+        filePath = RELOCALIZATION_CONF_FILE;
+    else if (serviceType == ServiceType::RELOCALIZATION_MARKERS_SERVICE)
+        filePath = RELOCALIZATION_MARKERS_CONF_FILE;
+    else if (serviceType == ServiceType::MAPPING_SERVICE)
+        filePath = MAPPING_CONF_FILE;
+    else if (serviceType == ServiceType::MAPPING_STEREO_SERVICE)
+        filePath = MAPPING_STEREO_CONF_FILE;
+
+    if (filePath != "")
+    {
+        ofstream confFile(filePath, ofstream::out);
+
+        // Check if file was successfully opened for writing
+        if (confFile.is_open())
+        {
+            confFile << "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" << endl;
+            confFile << "<xpcf-registry autoAlias=\"true\">" << endl << endl;
+            confFile << "<properties>" << endl << endl;
+            confFile << "    <!-- gRPC proxy configuration-->" << endl;
+            if (serviceType == ServiceType::RELOCALIZATION_SERVICE)
+                confFile << "    <configure component=\"IRelocalizationPipeline_grpcProxy\">" << endl;
+            else if (serviceType == ServiceType::RELOCALIZATION_MARKERS_SERVICE)
+                confFile << "    <configure component=\"IRelocalizationPipeline_grpcProxy\">" << endl;
+            else if (serviceType == ServiceType::MAPPING_SERVICE)
+                confFile << "    <configure component=\"IMappingPipeline_grpcProxy\">" << endl;
+            else if (serviceType == ServiceType::MAPPING_STEREO_SERVICE)
+                confFile << "    <configure component=\"IMappingPipeline_grpcProxy\">" << endl;
+            confFile << "        <property name=\"channelUrl\" access=\"rw\" type=\"string\" value=\""
+                     << serviceURL << "\"/>" << endl;
+            confFile << "        <property name=\"channelCredentials\" access=\"rw\" type=\"uint\" value=\"0\"/>" << endl;
+            confFile << "    </configure>" << endl << endl;
+            confFile << "</properties>" << endl << endl;
+            confFile << "</xpcf-registry>" << endl;
+
+            confFile.close();
+        }
+        else {
+            LOG_ERROR("Error when creating the service configuration file");
+        }
+    }
+    else {
+        LOG_ERROR("Error when creating the service configuration file");
+    }
+}
+
+SRef<api::pipeline::IPipeline> SolARMappingAndRelocalizationFrontendPipeline::getServiceForClient(
+                                                            const string clientUUID,
+                                                            const ServiceType serviceType) const
+{
+    SRef<api::pipeline::IPipeline> serviceInstance = nullptr;
+
+    unique_lock<mutex> lock(m_mutexClientMap);
+
+    auto it = m_clientsMap.find(clientUUID);
+
+    if (it != m_clientsMap.end()) {
+        switch(serviceType) {
+            case ServiceType::RELOCALIZATION_SERVICE:
+                serviceInstance = it->second.relocalizationService;
+                break;
+            case ServiceType::RELOCALIZATION_MARKERS_SERVICE:
+                serviceInstance = it->second.relocalizationMarkersService;
+                break;
+            case ServiceType::MAPPING_SERVICE:
+                serviceInstance = it->second.mappingService;
+                break;
+            case ServiceType::MAPPING_STEREO_SERVICE:
+                serviceInstance = it->second.mappingStereoService;
+                break;
+        }
+    }
+    else {
+        LOG_DEBUG("No service instances found for client: {}", clientUUID);
+    }
+
+    return serviceInstance;
+}
+
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 {
-    std::pair<SRef<Image>, Transform3Df> imagePose;
+    tuple<string, SRef<Image>, Transform3Df> imagePose;
     if (!m_dropBufferRelocalization.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
 
-    SRef<Image> image = imagePose.first;
-    Transform3Df pose = imagePose.second;
+    string clientUUID = get<0>(imagePose);
+    SRef<Image> image = get<1>(imagePose);
+    Transform3Df pose = get<2>(imagePose);
+
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(clientUUID, ServiceType::RELOCALIZATION_SERVICE));
+
+    if (relocalizationService == nullptr)
+        return;
 
     // No image encoding to send to relocalization service
     image->setImageEncoding(Image::ENCODING_NONE);
@@ -843,14 +1183,14 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     float confidence;
 
     try {
-        if (m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_INFO("Relocalization succeeded");
             LOG_DEBUG("Client original pose: \n{}", pose.matrix());
             LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
             findTransformation(new_pose * pose.inverse());
         }
-    }  catch (const std::exception &e) {
+    }  catch (const exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
 
         m_mappingStatus = TRACKING_LOST;
@@ -858,27 +1198,36 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     }
 }
 
-void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker()
+void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarkers()
 {
-    std::pair<SRef<Image>, Transform3Df> imagePose;
-    if (!m_dropBufferRelocalizationMarker.tryPop(imagePose)) {
+    tuple<string, SRef<Image>, Transform3Df> imagePose;
+    if (!m_dropBufferRelocalizationMarkers.tryPop(imagePose)) {
         xpcf::DelegateTask::yield();
         return;
     }
 
-    SRef<Image> image = imagePose.first;
-    Transform3Df pose = imagePose.second;
+    string clientUUID = get<0>(imagePose);
+    SRef<Image> image = get<1>(imagePose);
+    Transform3Df pose = get<2>(imagePose);
+
+    // Get service instances for current client
+    SRef<api::pipeline::IRelocalizationPipeline> relocalizationMarkersService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IRelocalizationPipeline>(
+                getServiceForClient(clientUUID, ServiceType::RELOCALIZATION_MARKERS_SERVICE));
+
+    if (relocalizationMarkersService == nullptr)
+        return;
 
     // No image encoding to send to relocalization service
     image->setImageEncoding(Image::ENCODING_NONE);
 
-    LOG_DEBUG("Send image and pose to relocalization marker service");
+    LOG_DEBUG("Send image and pose to relocalization markers service");
 
     Transform3Df new_pose;
     float confidence;
 
-    if (m_relocalizationMarkerService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
-        LOG_INFO("Relocalization Marker succeeded");
+    if (relocalizationMarkersService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        LOG_INFO("Relocalization Markers succeeded");
         LOG_DEBUG("Client original pose: \n{}", pose.matrix());
         LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
         LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
@@ -888,15 +1237,24 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalizationMarker(
 
 void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 {
-    std::pair<std::vector<SRef<Image>>, std::vector<Transform3Df>> imagePoses;
+    tuple<string, vector<SRef<Image>>, vector<Transform3Df>> imagePoses;
 
     if (!m_dropBufferMapping.tryPop(imagePoses)) {
         xpcf::DelegateTask::yield();
         return;
     }
 
-    std::vector<SRef<Image>> images = imagePoses.first;
-    std::vector<Transform3Df> poses = imagePoses.second;
+    string clientUUID = get<0>(imagePoses);
+    vector<SRef<Image>> images = get<1>(imagePoses);
+    vector<Transform3Df> poses = get<2>(imagePoses);
+
+    // Get service instances for current client
+    SRef<api::pipeline::IMappingPipeline> mappingService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(clientUUID, ServiceType::MAPPING_SERVICE));
+    SRef<api::pipeline::IMappingPipeline> mappingStereoService =
+            xpcf::utils::dynamic_pointer_cast<api::pipeline::IMappingPipeline>(
+                getServiceForClient(clientUUID, ServiceType::MAPPING_STEREO_SERVICE));
 
     // No image encoding to send to mapping service
     for (auto & image : images)
@@ -911,7 +1269,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
 
-        if (m_mappingStereoService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (mappingStereoService == nullptr)
+            return;
+
+        if (mappingStereoService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping stereo status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
@@ -927,7 +1288,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     else {
         LOG_DEBUG("Mono mapping processing");
 
-        if (m_mappingService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (mappingService == nullptr)
+            return;
+
+        if (mappingService->mappingProcessRequest(images, poses, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
@@ -944,7 +1308,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 
 void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform3Df transform)
 {
-    std::unique_lock<std::mutex> lock(m_mutexFindTransform);
+    unique_lock<mutex> lock(m_mutexFindTransform);
 	m_vector_reloc_transf_matrix.push_back(transform);
 	// find mean transformation
 	if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
@@ -989,21 +1353,21 @@ bool SolARMappingAndRelocalizationFrontendPipeline::checkNeedReloc()
 /// @brief get 3D transform
 Transform3Df SolARMappingAndRelocalizationFrontendPipeline::get3DTransform()
 {
-    std::unique_lock<std::mutex> lock(m_mutexTransform);
+    unique_lock<mutex> lock(m_mutexTransform);
     return m_T_M_W;
 }
 
 /// @brief set 3D transform
 void SolARMappingAndRelocalizationFrontendPipeline::set3DTransform(const Transform3Df& transform3D)
 {
-    std::unique_lock<std::mutex> lock(m_mutexTransform);
+    unique_lock<mutex> lock(m_mutexClientMap);
     m_T_M_W = transform3D;
 }
 
 /// @brief set last pose
 void SolARMappingAndRelocalizationFrontendPipeline::setLastPose(const Transform3Df& lastPose)
 {
-    std::unique_lock<std::mutex> lock(m_mutexLastPose);
+    unique_lock<mutex> lock(m_mutexLastPose);
     m_lastPose = lastPose;
 }
 

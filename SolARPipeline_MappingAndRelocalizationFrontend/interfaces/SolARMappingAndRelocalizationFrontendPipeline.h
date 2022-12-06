@@ -32,6 +32,7 @@
 #include "xpcf/threading/BaseTask.h"
 #include "xpcf/threading/DropBuffer.h"
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
+#include "api/pipeline/IServiceManagerPipeline.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/pipeline/IMappingPipeline.h"
 #include "api/pipeline/IMapUpdatePipeline.h"
@@ -40,6 +41,10 @@
 #include "xpcf/xpcf.h"
 #include "core/Log.h"
 #include "core/Timer.h"
+
+#include <map>
+#include <string>
+#include <mutex>
 
 using namespace SolAR;
 using namespace SolAR::datastructure;
@@ -53,6 +58,17 @@ using namespace api;
 using namespace api::pipeline;
 namespace PIPELINES {
 namespace RELOCALIZATION {
+
+/**
+ * Structure that defines the services used and locked for each client
+ */
+
+struct Client_Services {
+    SRef<IRelocalizationPipeline>   relocalizationService;
+    SRef<IRelocalizationPipeline>   relocalizationMarkersService;
+    SRef<IMappingPipeline>          mappingService;
+    SRef<IMappingPipeline>          mappingStereoService;
+};
 
 /**
  * @class SolARMappingAndRelocalizationFrontendPipeline
@@ -232,11 +248,17 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
   private:
 
+    /// @brief create the configuration file for Services
+    void createConfigurationFile(const ServiceType serviceType, const std::string serviceURL) const;
+
+    /// @brief Give the service instance (proxy) for the given client UUID and service type
+    SRef<api::pipeline::IPipeline> getServiceForClient(const std::string clientUUID, const ServiceType serviceType) const;
+
     /// @brief send requests to the relocalization service
     void processRelocalization();
 
     /// @brief relocalization based on markers
-    void processRelocalizationMarker();
+    void processRelocalizationMarkers();
 
     /// @brief send requests to the mapping service
     void processMapping();
@@ -258,12 +280,18 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
   private:
 
-    // Relocalization, mapping and map update services
-    SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationService;
-    SRef<api::pipeline::IRelocalizationPipeline>	m_relocalizationMarkerService;
-    SRef<api::pipeline::IMappingPipeline>           m_mappingService;
-    SRef<api::pipeline::IMappingPipeline>           m_mappingStereoService;
+    // Map of current clients (UUID) with the services locked for each one
+    std::map<std::string, Client_Services> m_clientsMap;
+    mutable std::mutex                     m_mutexClientMap;
+
+    // Service Manager
+    SRef<api::pipeline::IServiceManagerPipeline>	m_serviceManager;
+
+    // Map update service (common to all clients)
     SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
+
+    // URL to use for the Relocalization Service (for Mapping services)
+    std::string m_relocalizationURL = "";
 
     bool m_init = false;            // Indicate if initialization has been made
     bool m_cameraOK = false;        // Indicate if camera parameters have been set
@@ -274,13 +302,19 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
-    xpcf::DelegateTask * m_relocalizationMarkerTask = nullptr;
+    xpcf::DelegateTask * m_relocalizationMarkersTask = nullptr;
     xpcf::DelegateTask * m_mappingTask = nullptr;
 
     // Drop buffer used by the relocalization task
-    xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalization;
-    xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalizationMarker;
-    xpcf::DropBuffer<std::pair<std::vector<SRef<datastructure::Image>>, std::vector<datastructure::Transform3Df>>> m_dropBufferMapping;
+    xpcf::DropBuffer<std::tuple<std::string,
+                                SRef<datastructure::Image>,
+                                datastructure::Transform3Df>>               m_dropBufferRelocalization;
+    xpcf::DropBuffer<std::tuple<std::string,
+                                SRef<datastructure::Image>,
+                                datastructure::Transform3Df>>               m_dropBufferRelocalizationMarkers;
+    xpcf::DropBuffer<std::tuple<std::string,
+                                std::vector<SRef<datastructure::Image>>,
+                                std::vector<datastructure::Transform3Df>>>  m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
     SolAR::datastructure::Transform3Df  m_T_M_W;
