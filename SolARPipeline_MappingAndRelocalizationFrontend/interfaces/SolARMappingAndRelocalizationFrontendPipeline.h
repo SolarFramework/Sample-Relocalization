@@ -60,14 +60,60 @@ namespace PIPELINES {
 namespace RELOCALIZATION {
 
 /**
- * Structure that defines the services used and locked for each client
+ * @class ClientContext
+ * @brief Class that models each client context
+ *
  */
 
-struct Client_Services {
-    SRef<IRelocalizationPipeline>   relocalizationService;
-    SRef<IRelocalizationPipeline>   relocalizationMarkersService;
-    SRef<IMappingPipeline>          mappingService;
-    SRef<IMappingPipeline>          mappingStereoService;
+class ClientContext
+{
+    public:
+        ClientContext()
+        {
+            // Initialize class members
+            m_relocalizationService = nullptr;
+            m_relocalizationMarkersService = nullptr;
+            m_mappingService = nullptr;
+            m_mappingStereoService = nullptr;
+        };
+
+    public:
+        SRef<api::pipeline::IRelocalizationPipeline>   m_relocalizationService;
+        SRef<api::pipeline::IRelocalizationPipeline>   m_relocalizationMarkersService;
+        SRef<api::pipeline::IMappingPipeline>          m_mappingService;
+        SRef<api::pipeline::IMappingPipeline>          m_mappingStereoService;
+
+        // URL to use for the Relocalization Service (for Mapping services)
+        std::string m_relocalizationURL = "";
+
+        // Pipeline mode defined for the client (Relocalization and Mapping by default)
+        PipelineMode m_PipelineMode = RELOCALIZATION_AND_MAPPING;
+
+        bool m_init = false;            // Indicate if initialization has been made
+        bool m_cameraOK = false;        // Indicate if camera parameters have been set
+        bool m_stereoMappingOK = false; // Indicate if the stereo mapping is available
+        bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
+        bool m_started = false;         // Indicate if pipeline il started
+
+        // 3D transformation matrix from client to SolAR coordinates system
+        SolAR::datastructure::Transform3Df  m_T_M_W;
+        std::mutex                          m_mutexTransform;
+        std::atomic<TransformStatus>        m_T_M_W_status;
+        float_t                             m_confidence = 0;
+        std::atomic<MappingStatus>          m_mappingStatus;
+
+        int m_maxTimeRequest;
+        std::atomic_bool m_isNeedReloc;
+        Timer m_relocTimer;
+
+        // Vector of 3D transformation matrix given by Relocalization service
+        std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
+
+        // Last pose received
+        SolAR::datastructure::Transform3Df  m_lastPose;
+        mutable std::mutex                  m_mutexLastPose;
+
+        std::mutex                          m_mutexFindTransform;
 };
 
 /**
@@ -251,8 +297,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief create the configuration file for Services
     void createConfigurationFile(const ServiceType serviceType, const std::string serviceURL) const;
 
-    /// @brief Give the service instance (proxy) for the given client UUID and service type
-    SRef<api::pipeline::IPipeline> getServiceForClient(const std::string clientUUID, const ServiceType serviceType) const;
+    /// @brief Give the context (ClientContext instance) of the given client UUID
+    SRef<ClientContext> getClientContext(const std::string clientUUID) const;
 
     /// @brief send requests to the relocalization service
     void processRelocalization();
@@ -264,41 +310,31 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     void processMapping();
 
 	/// @brief find transformation matrix
-	void findTransformation(Transform3Df transform);
+    void findTransformation(const SRef<ClientContext> clientContext, Transform3Df transform);
 
     /// @brief check if need to relocalize
-    bool checkNeedReloc();
+    bool checkNeedReloc(const SRef<ClientContext> clientContext);
 
     /// @brief get 3D transform
-    Transform3Df get3DTransform();
+    Transform3Df get3DTransform(const SRef<ClientContext> clientContext);
 
     /// @brief set 3D transform
-    void set3DTransform(const Transform3Df& transform3D);
+    void set3DTransform(const SRef<ClientContext> clientContext, const Transform3Df& transform3D);
 
     /// @brief set last pose
-    void setLastPose(const Transform3Df& lastPose);
+    void setLastPose(const SRef<ClientContext> clientContext, const Transform3Df& lastPose);
 
   private:
 
-    // Map of current clients (UUID) with the services locked for each one
-    std::map<std::string, Client_Services> m_clientsMap;
-    mutable std::mutex                     m_mutexClientMap;
+    // Map of current clients (UUID) with the context for each one
+    std::map<std::string, SRef<ClientContext>>      m_clientsMap;
+    mutable std::mutex                              m_mutexClientMap;
 
     // Service Manager
     SRef<api::pipeline::IServiceManagerPipeline>	m_serviceManager;
 
     // Map update service (common to all clients)
     SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
-
-    // URL to use for the Relocalization Service (for Mapping services)
-    std::string m_relocalizationURL = "";
-
-    bool m_init = false;            // Indicate if initialization has been made
-    bool m_cameraOK = false;        // Indicate if camera parameters have been set
-    bool m_stereoMappingOK = false; // Indicate if the stereo mapping is available
-    bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
-    bool m_started = false;         // Indicate if pipeline il started
-    bool m_tasksStarted = false;    // Indicate if tasks are started
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
@@ -316,27 +352,10 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
                                 std::vector<SRef<datastructure::Image>>,
                                 std::vector<datastructure::Transform3Df>>>  m_dropBufferMapping;
 
-    // 3D transformation matrix from client to SolAR coordinates system
-    SolAR::datastructure::Transform3Df  m_T_M_W;
-    std::mutex                          m_mutexTransform;
-    std::atomic<TransformStatus>        m_T_M_W_status;
-    float_t m_confidence = 0;
-    std::atomic<MappingStatus>          m_mappingStatus;
+    bool m_tasksStarted = false;    // Indicate if tasks are started
 
-    int m_nbRelocTransformMatrixRequest = 3;
-    int m_maxTimeRequest;
     int m_nbSecondsBetweenRelocRequest = 30;
-    std::atomic_bool m_isNeedReloc;
-    Timer m_relocTimer;
-
-    // Vector of 3D transformation matrix given by Relocalization service
-    std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
-
-    // Last pose received
-    SolAR::datastructure::Transform3Df  m_lastPose;
-    mutable std::mutex                  m_mutexLastPose;
-
-    std::mutex                          m_mutexFindTransform;
+    int m_nbRelocTransformMatrixRequest = 3;
 };
 
 } // namespace RELOCALIZATION
