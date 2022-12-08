@@ -1050,16 +1050,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(c
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(const string uuid,
-                                                                                 SRef<SolAR::datastructure::Map> & map) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest(SRef<SolAR::datastructure::Map> & map) const
 {
-    // Get context for current client
-    SRef<ClientContext> clientContext = getClientContext(uuid);
-    if (clientContext == nullptr) {
-        LOG_ERROR("Unknown client with UUID: {}", uuid);
-        return FrameworkReturnCode::_ERROR_;
-    }
-
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->getMapRequest(map);
     }
@@ -1068,15 +1060,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getMapRequest
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(const string uuid) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap() const
 {
-    // Get context for current client
-    SRef<ClientContext> clientContext = getClientContext(uuid);
-    if (clientContext == nullptr) {
-        LOG_ERROR("Unknown client with UUID: {}", uuid);
-        return FrameworkReturnCode::_ERROR_;
-    }
-
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->resetMap();
     }
@@ -1085,16 +1070,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::resetMap(cons
     }
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(const string uuid,
-                                                                                        SRef<SolAR::datastructure::PointCloud> & pointCloud) const
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloudRequest(SRef<SolAR::datastructure::PointCloud> & pointCloud) const
 {
-    // Get context for current client
-    SRef<ClientContext> clientContext = getClientContext(uuid);
-    if (clientContext == nullptr) {
-        LOG_ERROR("Unknown client with UUID: {}", uuid);
-        return FrameworkReturnCode::_ERROR_;
-    }
-
     if (m_mapupdateService != nullptr) {
         return m_mapupdateService->getPointCloudRequest(pointCloud);
     }
@@ -1296,6 +1273,9 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     if ((images.size() >= 2) && (clientContext->m_stereoMappingOK) && (clientContext->m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
 
+        // Unlock mono mapping service
+        m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, clientUUID);
+
         if (clientContext->m_mappingStereoService == nullptr)
             return;
 
@@ -1314,6 +1294,9 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     }
     else {
         LOG_DEBUG("Mono mapping processing");
+
+        // Unlock stereo mapping service
+        m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, clientUUID);
 
         if (clientContext->m_mappingService == nullptr)
             return;
