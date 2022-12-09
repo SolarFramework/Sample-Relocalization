@@ -1274,7 +1274,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
         LOG_DEBUG("Stereo mapping processing");
 
         // Unlock mono mapping service
-        m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, clientUUID);
+        if (clientContext->m_mappingService != nullptr) {
+            m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, clientUUID);
+            clientContext->m_mappingService = nullptr;
+        }
 
         if (clientContext->m_mappingStereoService == nullptr)
             return;
@@ -1296,7 +1299,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
         LOG_DEBUG("Mono mapping processing");
 
         // Unlock stereo mapping service
-        m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, clientUUID);
+        if (clientContext->m_mappingStereoService != nullptr) {
+            m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, clientUUID);
+            clientContext->m_mappingStereoService = nullptr;
+        }
 
         if (clientContext->m_mappingService == nullptr)
             return;
