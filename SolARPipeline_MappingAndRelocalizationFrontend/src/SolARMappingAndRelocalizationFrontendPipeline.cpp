@@ -649,6 +649,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop()
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                                                             const std::vector<SolAR::datastructure::Transform3Df> & poses,
                                                                                             bool fixedPose,
+                                                                                            const SolAR::datastructure::Transform3Df & worldTransform,
                                                                                             const std::chrono::system_clock::time_point & timestamp,
                                                                                             TransformStatus & transform3DStatus,
                                                                                             SolAR::datastructure::Transform3Df & transform3D,
