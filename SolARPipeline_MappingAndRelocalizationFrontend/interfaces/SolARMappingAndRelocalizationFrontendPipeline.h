@@ -224,7 +224,14 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     // Drop buffer used by the relocalization task
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalization;
     xpcf::DropBuffer<std::pair<SRef<datastructure::Image>, datastructure::Transform3Df>> m_dropBufferRelocalizationMarker;
-    xpcf::DropBuffer<std::pair<std::vector<SRef<datastructure::Image>>, std::vector<datastructure::Transform3Df>>> m_dropBufferMapping;
+    struct DropBufferMappingEntry
+    {
+      std::vector<SRef<datastructure::Image>> images;
+      std::vector<datastructure::Transform3Df> poses;
+      bool fixedPose = false;
+      datastructure::Transform3Df worldTransform;
+    };
+    xpcf::DropBuffer<DropBufferMappingEntry> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
     SolAR::datastructure::Transform3Df  m_T_M_W;
