@@ -166,12 +166,7 @@ int main(int argc, char ** argv)
 
                     // Send data to mapping and relocalization front end pipeline
                     gRelocalizationAndMappingFrontendPipeline->relocalizeProcessRequest(
-                                {image}, {pose}, /* fixedPose */ false,
-                                { .0f, .0f, .0f, .0f,
-                                  .0f, .0f, .0f, .0f,
-                                  .0f, .0f, .0f, .0f,
-                                  .0f, .0f, .0f, .0f },
-                                timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
+                                {image}, {pose}, timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
 
                     if (transform3DStatus == api::pipeline::NEW_3DTRANSFORM) {
                         LOG_INFO("New 3D transformation = {}", transform3D.matrix());
