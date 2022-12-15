@@ -261,7 +261,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterClient(const string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterClient(const string & uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::unregisterClient");
 
@@ -294,7 +294,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string & uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
 
@@ -425,7 +425,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string uuid, PipelineMode pipelineMode)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string & uuid, PipelineMode pipelineMode)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init(PipelineMode)");
 
@@ -441,7 +441,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     return init(uuid);
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessingMode(const string & uuid,
                                                                                      PipelineMode & pipelineMode) const
 {
     // Get context for current client
@@ -456,7 +456,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessing
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string uuid, const CameraParameters & cameraParams)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string & uuid, const CameraParameters & cameraParams)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters");
 
@@ -537,7 +537,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters(const string & uuid,
                                                                                        const SolAR::datastructure::CameraParameters & cameraParams1,
                                                                                        const SolAR::datastructure::CameraParameters & cameraParams2)
 {
@@ -579,7 +579,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
     return setCameraParameters(uuid, cameraParams1);
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificationParameters(const string & uuid,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam1,
                                                                                               const SolAR::datastructure::RectificationParameters & rectCam2)
 {
@@ -624,7 +624,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters(const string & uuid,
                                                                                        CameraParameters & cameraParams) const
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::getCameraParameters");
@@ -663,7 +663,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraPara
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const string & uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::start");
 
@@ -801,7 +801,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const string uuid)
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const string & uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::stop");
 
@@ -911,7 +911,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const string & uuid,
                                                                                             const vector<SRef<SolAR::datastructure::Image>> & images,
                                                                                             const vector<SolAR::datastructure::Transform3Df> & poses,
                                                                                             const chrono::system_clock::time_point & timestamp,
@@ -974,7 +974,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransformRequest(const string & uuid,
                                                                                          TransformStatus & transform3DStatus,
                                                                                          SolAR::datastructure::Transform3Df & transform3D,
                                                                                          float_t & confidence)
@@ -1006,7 +1006,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
     return FrameworkReturnCode::_SUCCESS;
 }
 
-FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(const string uuid,
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(const string & uuid,
                                                                                SolAR::datastructure::Transform3Df & pose,
                                                                                const PoseType poseType) const
 {
@@ -1083,7 +1083,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloud
 // Private
 
 void SolARMappingAndRelocalizationFrontendPipeline::createConfigurationFile(const ServiceType serviceType,
-                                                                            const string serviceURL) const
+                                                                            const string & serviceURL) const
 {
     LOG_DEBUG("Create service configuration file with URL: {}", serviceURL);
 
@@ -1137,7 +1137,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::createConfigurationFile(cons
     }
 }
 
-SRef<ClientContext> SolARMappingAndRelocalizationFrontendPipeline::getClientContext(const string clientUUID) const
+SRef<ClientContext> SolARMappingAndRelocalizationFrontendPipeline::getClientContext(const string & clientUUID) const
 {
     SRef<ClientContext> clientContext = nullptr;
 
