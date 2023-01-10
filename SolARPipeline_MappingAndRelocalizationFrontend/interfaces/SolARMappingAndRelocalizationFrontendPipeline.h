@@ -215,6 +215,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
     bool m_started = false;         // Indicate if pipeline il started
     bool m_tasksStarted = false;    // Indicate if tasks are started
+    bool m_isTransformS2WSet = false;  // Indicate if SolAR to World transform has been set 
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
@@ -235,6 +236,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // 3D transformation matrix from client to SolAR coordinates system
     SolAR::datastructure::Transform3Df  m_T_M_W;
+    SolAR::datastructure::Transform3Df  m_T_SolAR_World;  // SolAR to World transformation matrix
     std::mutex                          m_mutexTransform;
     std::atomic<TransformStatus>        m_T_M_W_status;
     float_t m_confidence = 0;

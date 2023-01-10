@@ -412,6 +412,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
         set3DTransform(Transform3Df::Identity());
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
+        m_T_SolAR_World = Transform3Df::Identity();
         m_mappingStatus = BOOTSTRAP;
         m_isNeedReloc = true;
         m_vector_reloc_transf_matrix.clear();
@@ -716,7 +717,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
         if (m_T_M_W_status == NEW_3DTRANSFORM) {
             m_T_M_W_status = PREVIOUS_3DTRANSFORM;
         }
-        transform3D = get3DTransform();
+        // T_ARr_SolAR to T_ARr_World
+        transform3D = m_T_SolAR_World*get3DTransform();
         confidence = m_confidence;
     }
     else {
@@ -868,7 +870,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     std::vector<SRef<Image>> images = imagePoses.images;
     std::vector<Transform3Df> poses = imagePoses.poses;
     bool fixedPose = imagePoses.fixedPose;
-    Transform3Df worldTransform = imagePoses.worldTransform; // TODO: how to use this with curT_M_W
+    Transform3Df worldTransform = imagePoses.worldTransform; // TODO: how to use this with curT_M_W 
 
     // No image encoding to send to mapping service
     for (auto & image : images)
@@ -878,12 +880,37 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     Transform3Df updatedT_M_W;
     MappingStatus mappingStatus;
     Transform3Df curT_M_W = get3DTransform();
+    
+    // worldTransform is T_ARr_World, curT_M_W is T_ARr_SolAR
+    // in case of GT, either set solar to world T (1st GT), or update ARr to solar T (following GTs)
+    if (fixedPose) {
+        if (!m_isTransformS2WSet) { // first time receive GT pose
+            m_T_SolAR_World = worldTransform*curT_M_W.inverse();
+            if (m_stereoMappingOK) {
+                // TODO: implement stereo mapping case
+            }
+            else {
+                if (m_mappingService->set3DTransformSolARToWorld(m_T_SolAR_World) != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Failed to set transform solar to world in map");
+                    return;
+                }
+            }
+            m_isTransformS2WSet = true;  // set only once SolAR to World transform
+        }
+        else {  // 2nd, 3rd, 4th ... GT pose
+            // update T_ARr_SolAR in order to compensate for pose drift
+            auto gt_pose_in_world = worldTransform*poses[0];  // TODO: add safety check if poses empty 
+            auto gt_pose_in_solar = m_T_SolAR_World.inverse()*gt_pose_in_world;
+            curT_M_W = gt_pose_in_solar*poses[0].inverse();
+            set3DTransform(curT_M_W);
+        }
+    }
 
     // Mono or stereo images?
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
-
-        if (m_mappingStereoService->mappingProcessRequest(images, poses, /* fixedPose = */ false, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        // TODO: implement stereo mapping pipeline to take into account the case where fixedPose=True  
+        if (m_mappingStereoService->mappingProcessRequest(images, poses, /* fixedPose = */ fixedPose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping stereo status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
@@ -899,7 +926,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     else {
         LOG_DEBUG("Mono mapping processing");
 
-        if (m_mappingService->mappingProcessRequest(images, poses, false, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (m_mappingService->mappingProcessRequest(images, poses, fixedPose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
