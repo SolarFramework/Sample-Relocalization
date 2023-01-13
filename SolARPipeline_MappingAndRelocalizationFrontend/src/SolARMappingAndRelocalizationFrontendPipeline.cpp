@@ -410,7 +410,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
 
         // Initialize class members
         set3DTransform(Transform3Df::Identity());
-        m_T_M_SolAR = Transform3Df::Identity();
+        {
+            std::lock_guard<std::mutex> lock(m_mutexTransformSolAR);
+            m_T_M_SolAR = Transform3Df::Identity();
+        }
         m_T_M_W_status = NO_3DTRANSFORM;
         m_confidence = 1;
         m_mappingStatus = BOOTSTRAP;
@@ -881,6 +884,23 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     Transform3Df updatedT_M_W;
     MappingStatus mappingStatus;
     Transform3Df curT_M_W = get3DTransform();
+    Transform3Df curT_M_SolAR;
+    {
+        std::lock_guard<std::mutex> lock(m_mutexTransformSolAR);
+        curT_M_SolAR = m_T_M_SolAR;
+    }
+    if (fixedPose && !m_isTransformS2WSet) {
+        if (m_stereoMappingOK) {
+            // TODO: implement stereo mapping case
+        }
+        else {
+            if (m_mappingService->set3DTransformSolARToWorld(curT_M_W * curT_M_SolAR.inverse()) != FrameworkReturnCode::_SUCCESS) {
+                LOG_ERROR("Failed to set transform solar to world in map");
+                return;
+            }
+        }
+        m_isTransformS2WSet = true;  // set only once SolAR to World transform
+    }
 
     // Mono or stereo images?
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
@@ -902,7 +922,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     else {
         LOG_DEBUG("Mono mapping processing");
 
-        if (m_mappingService->mappingProcessRequest(images, poses, fixedPose, curT_M_W, m_T_M_SolAR, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (m_mappingService->mappingProcessRequest(images, poses, fixedPose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
             if (!(updatedT_M_W * curT_M_W.inverse()).isApprox(Transform3Df::Identity())) {
@@ -943,7 +963,12 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
         transform3D.linear() = rot;
         transform3D.translation() = translations;
         LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", transform3D.matrix());
-        m_T_M_SolAR = transform3D;
+        {
+            std::lock_guard<std::mutex> lock(m_mutexTransformSolAR);
+            m_T_M_SolAR = transform3D;
+        }
+        if (m_T_M_W.isApprox(Transform3Df::Identity()))
+            set3DTransform(transform3D);
         if (m_mappingStatus == BOOTSTRAP)
             m_mappingStatus = MAPPING;
         m_T_M_W_status = NEW_3DTRANSFORM;
