@@ -191,11 +191,17 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief check if need to relocalize
     bool checkNeedReloc();
 
-    /// @brief get 3D transform
-    Transform3Df get3DTransform();
+    /// @brief get 3D transform AR runtime to World 
+    Transform3Df get3DTransformWorld();
 
-    /// @brief set 3D transform
-    void set3DTransform(const Transform3Df& transform3D);
+    /// @brief get 3D transform AR runtime to SolAR 
+    Transform3Df get3DTransformSolAR();
+
+    /// @brief set 3D transform AR runtime to World 
+    void set3DTransformWorld(const Transform3Df& transform3D);
+
+    /// @brief set 3D transform AR runtime to SolAR
+    void set3DTransformSolAR(const Transform3Df& transform3D);
 
     /// @brief set last pose
     void setLastPose(const Transform3Df& lastPose);
@@ -235,11 +241,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     xpcf::DropBuffer<DropBufferMappingEntry> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
-    SolAR::datastructure::Transform3Df  m_T_M_W;      // transform from Device (AR runtime) to World 
+    SolAR::datastructure::Transform3Df  m_T_M_World;  // transform from Device (AR runtime) to World 
     SolAR::datastructure::Transform3Df  m_T_M_SolAR;  // transform from Device (AR runtime) to SolAR 
-    std::mutex                          m_mutexTransform;
+    std::mutex                          m_mutexTransformWorld;
     std::mutex                          m_mutexTransformSolAR;
-    std::atomic<TransformStatus>        m_T_M_W_status;
+    std::atomic<TransformStatus>        m_T_status;  // status of 3D transform 
     float_t m_confidence = 0;
     std::atomic<MappingStatus>          m_mappingStatus;
 
