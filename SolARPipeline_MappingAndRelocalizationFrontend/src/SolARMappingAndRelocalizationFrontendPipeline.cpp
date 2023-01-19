@@ -438,6 +438,19 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
 
     clientContext->m_PipelineMode = pipelineMode;
 
+    if (pipelineMode == RELOCALIZATION_ONLY) {
+        // Unlock mono mapping service
+        if (clientContext->m_mappingService != nullptr) {
+            m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
+            clientContext->m_mappingService = nullptr;
+        }
+        // Unlock stereo mapping service
+        if (clientContext->m_mappingStereoService != nullptr) {
+            m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, uuid);
+            clientContext->m_mappingStereoService = nullptr;
+        }
+    }
+
     return init(uuid);
 }
 
