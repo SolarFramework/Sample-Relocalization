@@ -870,14 +870,18 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     std::vector<Transform3Df> poses = imagePoses.poses;
     bool fixedPose = imagePoses.fixedPose;
     Transform3Df worldTransform = imagePoses.worldTransform; 
-    if (fixedPose) { // update T_ARr_World if GT pose (GT pose is defined to be fixed, i.e. cannot change during BA)  
+    if (fixedPose && m_isTransformS2WSet) { // update T_ARr_World if GT pose (GT pose is defined to be fixed, i.e. cannot change during BA)
         // here we get as input T_ARr_World we need adjust T_ARr_SolAR accordingly
         // both transforms are used to compensate for pose drift:  
         // T_ARr_World*pose_ARr --> right pose in World & T_ARr_SolAR*pose_ARr --> right pose in SolAR
         auto cur_TW = get3DTransformWorld();
         auto cur_TS = get3DTransformSolAR();
+        LOG_INFO("Mapping: receiving 2nd, 3rd, ... fixedPose current t_w:\n {} \n current t_s: \n {}", cur_TW.matrix(), cur_TS.matrix());
         set3DTransformSolAR(cur_TS*cur_TW.inverse()*worldTransform); 
         set3DTransformWorld(worldTransform);
+        auto cur_TW2 = get3DTransformWorld();
+        auto cur_TS2 = get3DTransformSolAR();
+        LOG_INFO("Mapping: after correction \n t_w: \n {}  t_s : \n {}", cur_TW2.matrix(), cur_TS2.matrix());
     }
 
     // No image encoding to send to mapping service
@@ -887,14 +891,15 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     LOG_DEBUG("Send image and pose to mapping service");
     Transform3Df updatedT_M_W;
     MappingStatus mappingStatus;
-    Transform3Df curT_M_W = get3DTransformWorld();
     if (fixedPose && !m_isTransformS2WSet) {
+        set3DTransformWorld(worldTransform);
         Transform3Df curT_M_SolAR = get3DTransformSolAR();
+        LOG_INFO("Mapping: receiving 1st fixedPose current t_w:\n {} \n current t_s: \n {}", worldTransform.matrix(), curT_M_SolAR.matrix());
         if (m_stereoMappingOK) {
             // TODO: implement stereo mapping case
         }
         else {
-            if (m_mappingService->set3DTransformSolARToWorld(curT_M_W * curT_M_SolAR.inverse()) != FrameworkReturnCode::_SUCCESS) {
+            if (m_mappingService->set3DTransformSolARToWorld(worldTransform * curT_M_SolAR.inverse()) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Failed to set transform solar to world in map");
                 return;
             }
@@ -903,6 +908,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     }
 
     // Mono or stereo images?
+    Transform3Df curT_M_W = get3DTransformWorld();
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
         // TODO: implement stereo mapping pipeline to take into account the case where fixedPose=True  
