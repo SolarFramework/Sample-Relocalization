@@ -94,11 +94,14 @@ class ClientContext
         bool m_stereoMappingOK = false; // Indicate if the stereo mapping is available
         bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
         bool m_started = false;         // Indicate if pipeline il started
+        bool m_isTransformS2WSet = false;  // Indicate if SolAR to World transform has been set
 
         // 3D transformation matrix from client to SolAR coordinates system
-        SolAR::datastructure::Transform3Df  m_T_M_W;
-        std::mutex                          m_mutexTransform;
-        std::atomic<TransformStatus>        m_T_M_W_status;
+        SolAR::datastructure::Transform3Df  m_T_M_World;  // transform from Device (AR runtime) to World
+        SolAR::datastructure::Transform3Df  m_T_M_SolAR;  // transform from Device (AR runtime) to SolAR
+        std::mutex                          m_mutexTransformWorld;
+        std::mutex                          m_mutexTransformSolAR;
+        std::atomic<TransformStatus>        m_T_status;  // status of 3D transform
         float_t                             m_confidence = 0;
         std::atomic<MappingStatus>          m_mappingStatus;
 
@@ -176,15 +179,15 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     /// @brief Set the camera parameters
     /// @param[in] uuid: UUID of the client
-    /// @param[in] cameraParams the camera parameters (its resolution and its focal)
+    /// @param[in] cameraParams: the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode setCameraParameters(const std::string & uuid,
                                             const SolAR::datastructure::CameraParameters & cameraParams) override;
 
     /// @brief Set the camera parameters (use for stereo camera)
     /// @param[in] uuid: UUID of the client
-    /// @param[in] cameraParams1 the camera parameters of the first camera
-    /// @param[in] cameraParams2 the camera parameters of the second camera
+    /// @param[in] cameraParams1: the camera parameters of the first camera
+    /// @param[in] cameraParams2: the camera parameters of the second camera
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly set, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode setCameraParameters(const std::string & uuid,
                                             const SolAR::datastructure::CameraParameters & cameraParams1,
@@ -192,8 +195,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     /// @brief Set the rectification parameters (use for stereo camera)
     /// @param[in] uuid: UUID of the client
-    /// @param[in] rectCam1 the rectification parameters of the first camera
-    /// @param[in] rectCam2 the rectification parameters of the second camera
+    /// @param[in] rectCam1: the rectification parameters of the first camera
+    /// @param[in] rectCam2: the rectification parameters of the second camera
     /// @return FrameworkReturnCode::_SUCCESS if the rectification parameters are correctly set, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode setRectificationParameters(const std::string & uuid,
                                                    const SolAR::datastructure::RectificationParameters & rectCam1,
@@ -201,7 +204,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     /// @brief Get the camera parameters
     /// @param[in] uuid: UUID of the client
-    /// @param[out] cameraParams the camera parameters (its resolution and its focal)
+    /// @param[out] cameraParams: the camera parameters (its resolution and its focal)
     /// @return FrameworkReturnCode::_SUCCESS if the camera parameters are correctly returned, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode getCameraParameters(const std::string & uuid,
                                             SolAR::datastructure::CameraParameters & cameraParams) const override;
@@ -235,6 +238,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @param[in] uuid: UUID of the client
     /// @param[in] images the images to process
     /// @param[in] poses the poses associated to images in the client coordinates system
+    /// @param[in] fixedPose the input poses are considered as ground truth
+    /// @param[in] worldTransform SolAR (ex: marker) to World origin (ex: BIM origin). Pass zero-filled matrix if not set.
     /// @param[in] timestamp the timestamp of the image
     /// @param[out] transform3DStatus the status of the current 3D transformation matrix
     /// @param[out] transform3D the current 3D transformation matrix (if available)
@@ -244,6 +249,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     FrameworkReturnCode relocalizeProcessRequest(const std::string & uuid,
                                                  const std::vector<SRef<SolAR::datastructure::Image>> & images,
                                                  const std::vector<SolAR::datastructure::Transform3Df> & poses,
+                                                 bool fixedPose,
+                                                 const SolAR::datastructure::Transform3Df & worldTransform,
                                                  const std::chrono::system_clock::time_point & timestamp,
                                                  TransformStatus & transform3DStatus,
                                                  SolAR::datastructure::Transform3Df & transform3D,
@@ -310,11 +317,17 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief check if need to relocalize
     bool checkNeedReloc(const SRef<ClientContext> clientContext);
 
-    /// @brief get 3D transform
-    Transform3Df get3DTransform(const SRef<ClientContext> clientContext);
+    /// @brief get 3D transform AR runtime to World
+    Transform3Df get3DTransformWorld(const SRef<ClientContext> clientContext);
 
-    /// @brief set 3D transform
-    void set3DTransform(const SRef<ClientContext> clientContext, const Transform3Df& transform3D);
+    /// @brief get 3D transform AR runtime to SolAR
+    Transform3Df get3DTransformSolAR(const SRef<ClientContext> clientContext);
+
+    /// @brief set 3D transform AR runtime to World
+    void set3DTransformWorld(const SRef<ClientContext> clientContext, const Transform3Df& transform3D);
+
+    /// @brief set 3D transform AR runtime to SolAR
+    void set3DTransformSolAR(const SRef<ClientContext> clientContext, const Transform3Df& transform3D);
 
     /// @brief set last pose
     void setLastPose(const SRef<ClientContext> clientContext, const Transform3Df& lastPose);
@@ -343,9 +356,15 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     xpcf::DropBuffer<std::tuple<std::string,
                                 SRef<datastructure::Image>,
                                 datastructure::Transform3Df>>               m_dropBufferRelocalizationMarkers;
-    xpcf::DropBuffer<std::tuple<std::string,
-                                std::vector<SRef<datastructure::Image>>,
-                                std::vector<datastructure::Transform3Df>>>  m_dropBufferMapping;
+     struct DropBufferMappingEntry
+    {
+      std::string uuid;
+      std::vector<SRef<datastructure::Image>> images;
+      std::vector<datastructure::Transform3Df> poses;
+      bool fixedPose = false;
+      datastructure::Transform3Df worldTransform;
+    };
+    xpcf::DropBuffer<DropBufferMappingEntry> m_dropBufferMapping;
 
     bool m_tasksStarted = false;    // Indicate if tasks are started
 
