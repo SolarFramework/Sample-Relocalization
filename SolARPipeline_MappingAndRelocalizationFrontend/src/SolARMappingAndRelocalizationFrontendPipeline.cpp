@@ -963,8 +963,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             if (checkNeedReloc(clientContext)){
                 LOG_DEBUG("Push image and pose for relocalization task");
                 m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
-                m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
-            }
+                if (clientContext->m_mappingStatus == BOOTSTRAP)
+                    m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
+             }
 
             // Mapping if the pipeline mode is mapping and found 3D Transform
             if ((clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING)
