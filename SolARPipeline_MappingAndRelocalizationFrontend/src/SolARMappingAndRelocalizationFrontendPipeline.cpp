@@ -677,7 +677,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             if (checkNeedReloc()){
                 LOG_DEBUG("Push image and pose for relocalization task");
                 m_dropBufferRelocalization.push(std::make_pair(images[0], poses[0]));
-                m_dropBufferRelocalizationMarker.push(std::make_pair(images[0], poses[0]));
+                if (m_mappingStatus == BOOTSTRAP)
+                    m_dropBufferRelocalizationMarker.push(std::make_pair(images[0], poses[0]));
             }
 
             // Mapping if the pipeline mode is mapping and found 3D Transform
