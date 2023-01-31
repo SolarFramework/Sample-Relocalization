@@ -737,7 +737,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(
         return FrameworkReturnCode::_ERROR_;
     }
     if (!m_lastPose.matrix().isZero()) {
-        std::unique_lock<std::mutex> lock(m_mutexLastPose);
+        std::lock_guard<std::mutex> lock(m_mutexLastPose);
         if (poseType == DEVICE_POSE) {
             // Return last pose in device coordinate system
             pose = m_lastPose;
@@ -897,6 +897,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
         LOG_INFO("Mapping: receiving 1st fixedPose current t_w:\n {} \n current t_s: \n {}", worldTransform.matrix(), curT_M_SolAR.matrix());
         if (m_stereoMappingOK) {
             // TODO: implement stereo mapping case
+            LOG_ERROR("GT pose in stereo case is not yet implemented");
         }
         else {
             if (m_mappingService->set3DTransformSolARToWorld(worldTransform * curT_M_SolAR.inverse()) != FrameworkReturnCode::_SUCCESS) {
