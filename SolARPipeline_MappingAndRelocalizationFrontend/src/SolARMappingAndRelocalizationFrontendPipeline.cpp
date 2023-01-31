@@ -819,6 +819,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::stop");
 
+    FrameworkReturnCode return_code = FrameworkReturnCode::_SUCCESS;
+
     // Get context for current client
     SRef<ClientContext> clientContext = getClientContext(uuid);
     if (clientContext == nullptr) {
@@ -847,16 +849,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
             try {
                 if (clientContext->m_relocalizationService->stop() != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while stopping the relocalization service");
-                    return FrameworkReturnCode::_ERROR_;
+                    return_code = FrameworkReturnCode::_ERROR_;
                 }
             }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
-                return FrameworkReturnCode::_ERROR_;
+                return_code = FrameworkReturnCode::_ERROR_;
             }
         }
         else {
             LOG_ERROR("Relocalization service instance not created");
-            return FrameworkReturnCode::_ERROR_;
+            return_code = FrameworkReturnCode::_ERROR_;
         }
 
         if (clientContext->m_relocalizationMarkersService != nullptr){
@@ -866,16 +868,16 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
             try {
                 if (clientContext->m_relocalizationMarkersService->stop() != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Error while stopping the relocalization markers service");
-                    return FrameworkReturnCode::_ERROR_;
+                    return_code = FrameworkReturnCode::_ERROR_;
                 }
             }  catch (const exception &e) {
                 LOG_ERROR("Exception raised during remote request to the relocalization markers service: {}", e.what());
-                return FrameworkReturnCode::_ERROR_;
+                return_code = FrameworkReturnCode::_ERROR_;
             }
         }
         else {
             LOG_ERROR("Relocalization markers service instance not created");
-            return FrameworkReturnCode::_ERROR_;
+            return_code = FrameworkReturnCode::_ERROR_;
         }
 
         if (clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING){
@@ -887,16 +889,15 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
                 try {
                     if (clientContext->m_mappingService->stop() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while stopping the mapping service");
-                        return FrameworkReturnCode::_ERROR_;
+                        return_code = FrameworkReturnCode::_ERROR_;
                     }
                 }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping service: {}", e.what());
-                    return FrameworkReturnCode::_ERROR_;
+                    return_code = FrameworkReturnCode::_ERROR_;
                 }
             }
             else {
                 LOG_ERROR("Mapping service instance not created");
-                return FrameworkReturnCode::_ERROR_;
             }
 
             if ((clientContext->m_stereoMappingOK) && (clientContext->m_rectificationOK)){
@@ -906,11 +907,11 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
                 try {
                     if (clientContext->m_mappingStereoService->stop() != FrameworkReturnCode::_SUCCESS) {
                         LOG_ERROR("Error while stopping the mapping stereo service");
-                        return FrameworkReturnCode::_ERROR_;
+                        return_code = FrameworkReturnCode::_ERROR_;
                     }
                 }  catch (const exception &e) {
                     LOG_ERROR("Exception raised during remote request to the mapping stereo service: {}", e.what());
-                    return FrameworkReturnCode::_ERROR_;
+                    return_code = FrameworkReturnCode::_ERROR_;
                 }
             }
             else {
@@ -922,7 +923,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
         LOG_INFO("Pipeline already stopped");
     }
 
-    return FrameworkReturnCode::_SUCCESS;
+    return return_code;
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizeProcessRequest(const string & uuid,
