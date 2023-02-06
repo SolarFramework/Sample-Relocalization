@@ -263,6 +263,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     mutable std::mutex                  m_mutexLastPose;
 
     std::mutex                          m_mutexFindTransform;
+
+    // Test if relocalized pose is coherent
+    std::atomic<float> m_cumulatedDistance = 0.f;          // cumulated camera distance from last successful reloc
+    float m_thresTranslationRatio = 0.2f;     // ratio multiplied with cumulated distance to define the distance threshold between reloc pose and ARr pose
+
 };
 
 } // namespace RELOCALIZATION
