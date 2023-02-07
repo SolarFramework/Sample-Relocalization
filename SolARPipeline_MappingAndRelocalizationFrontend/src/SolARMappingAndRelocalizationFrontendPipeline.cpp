@@ -29,19 +29,20 @@ namespace RELOCALIZATION {
 // Public methods
 
 SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFrontendPipeline():ConfigurableBase(xpcf::toUUID<SolARMappingAndRelocalizationFrontendPipeline>())
-{    
+{
     try {
         declareInterface<api::pipeline::IAsyncRelocalizationPipeline>(this);
 
-        LOG_DEBUG("Components injection declaration");        
+        LOG_DEBUG("Components injection declaration");
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingService, "Mapping",  true);
         declareInjectable<api::pipeline::IMappingPipeline>(m_mappingStereoService, "StereoMapping",  true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationService, "RelocalizationMap", true);
         declareInjectable<api::pipeline::IRelocalizationPipeline>(m_relocalizationMarkerService, "RelocalizationMarkers", true);
         declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapupdateService, true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
-		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
+        declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
+        declareProperty("maxDistanceRelocMatrix", m_maxDistanceRelocMatrix);
 
         LOG_DEBUG("All component injections declared");
 
@@ -199,7 +200,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init()
     if (m_init) {
         LOG_WARNING("Pipeline has already been initialized");
         return FrameworkReturnCode::_SUCCESS;
-    }    
+    }
 
     m_init = true;
 
@@ -422,6 +423,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start()
             m_maxTimeRequest = 0;
         else
             m_maxTimeRequest = m_nbSecondsBetweenRelocRequest;
+        m_cumulatedDistance = 0.f;
 
         LOG_DEBUG("Empty buffers");
 
@@ -666,14 +668,17 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         if (!poses[0].matrix().isZero()) {
 
             // Update culumated distance
-            if (m_T_status != NO_3DTRANSFORM) {
+            if (m_mappingStatus != BOOTSTRAP) {
                 // transform exists -> already relocalized -> last pose exists
                 Transform3Df lastPose;
                 if (getLastPose(lastPose, DEVICE_POSE) != FrameworkReturnCode::_SUCCESS) {
                     LOG_ERROR("Failed to get last pose");
                     return FrameworkReturnCode::_ERROR_;
                 }
+                LOG_DEBUG("Last pose = {}", lastPose.matrix());
+                LOG_DEBUG("Current pose = {}", poses[0].matrix());
                 Vector3f diffTranslation(lastPose(0, 3)-poses[0](0, 3), lastPose(1, 3)-poses[0](1, 3), lastPose(2, 3)-poses[0](2, 3));
+                LOG_DEBUG("Distance between 2 last poses = {}", diffTranslation.norm());
                 m_cumulatedDistance = m_cumulatedDistance + diffTranslation.norm();
             }
 
@@ -835,7 +840,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
 
             // test reloc pose by comparing it to device pose, reject the reloc if big difference is observed
-            if (m_T_status != NO_3DTRANSFORM) {
+            if (m_mappingStatus != BOOTSTRAP) {
                 auto poseArrInSolar = m_T_M_SolAR*pose;
                 Vector3f dist(poseArrInSolar(0, 3)-new_pose(0, 3), poseArrInSolar(1, 3)-new_pose(1, 3), poseArrInSolar(2, 3)-new_pose(2, 3));
                 LOG_DEBUG("Pose distance = {} cumulated distance = {} ratio = {}", dist.norm(), m_cumulatedDistance, m_thresTranslationRatio);
@@ -898,15 +903,16 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     std::vector<SRef<Image>> images = imagePoses.images;
     std::vector<Transform3Df> poses = imagePoses.poses;
     bool fixedPose = imagePoses.fixedPose;
-    Transform3Df worldTransform = imagePoses.worldTransform; 
+    Transform3Df worldTransform = imagePoses.worldTransform;
+
     if (fixedPose && m_isTransformS2WSet) { // update T_ARr_World if GT pose (GT pose is defined to be fixed, i.e. cannot change during BA)
         // here we get as input T_ARr_World we need adjust T_ARr_SolAR accordingly
-        // both transforms are used to compensate for pose drift:  
+        // both transforms are used to compensate for pose drift:
         // T_ARr_World*pose_ARr --> right pose in World & T_ARr_SolAR*pose_ARr --> right pose in SolAR
         auto cur_TW = get3DTransformWorld();
         auto cur_TS = get3DTransformSolAR();
         LOG_INFO("Mapping: receiving 2nd, 3rd, ... fixedPose current t_w:\n {} \n current t_s: \n {}", cur_TW.matrix(), cur_TS.matrix());
-        set3DTransformSolAR(cur_TS*cur_TW.inverse()*worldTransform); 
+        set3DTransformSolAR(cur_TS*cur_TW.inverse()*worldTransform);
         set3DTransformWorld(worldTransform);
         auto cur_TW2 = get3DTransformWorld();
         auto cur_TS2 = get3DTransformSolAR();
@@ -941,7 +947,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
     Transform3Df curT_M_W = get3DTransformWorld();
     if ((images.size() >= 2) && (m_stereoMappingOK) && (m_rectificationOK)) {
         LOG_DEBUG("Stereo mapping processing");
-        // TODO: implement stereo mapping pipeline to take into account the case where fixedPose=True  
+        // TODO: implement stereo mapping pipeline to take into account the case where fixedPose=True
         if (m_mappingStereoService->mappingProcessRequest(images, poses, /* fixedPose = */ fixedPose, curT_M_W, updatedT_M_W, mappingStatus) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Mapping stereo status: {}", mappingStatus);
             m_mappingStatus = mappingStatus;
@@ -949,7 +955,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
                 LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
                 auto cur_TW = get3DTransformWorld();
                 auto cur_TS = get3DTransformSolAR();
-                set3DTransformSolAR(cur_TS*cur_TW.inverse()*updatedT_M_W); 
+                set3DTransformSolAR(cur_TS*cur_TW.inverse()*updatedT_M_W);
                 set3DTransformWorld(updatedT_M_W);
                 m_T_status = NEW_3DTRANSFORM;
             }
@@ -968,7 +974,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
                 LOG_INFO("New transform found by loop closure:\n{}", updatedT_M_W.matrix());
                 auto cur_TW = get3DTransformWorld();
                 auto cur_TS = get3DTransformSolAR();
-                set3DTransformSolAR(cur_TS*cur_TW.inverse()*updatedT_M_W); 
+                set3DTransformSolAR(cur_TS*cur_TW.inverse()*updatedT_M_W);
                 set3DTransformWorld(updatedT_M_W);
                 m_T_status = NEW_3DTRANSFORM;
             }
@@ -982,25 +988,40 @@ void SolARMappingAndRelocalizationFrontendPipeline::processMapping()
 void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform3Df transform)
 {
     std::unique_lock<std::mutex> lock(m_mutexFindTransform);
-	m_vector_reloc_transf_matrix.push_back(transform);
-	// find mean transformation
-	if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-		Vector3f translations(0.f, 0.f, 0.f); 
-		Vector3f eulers(0.f, 0.f, 0.f);
-		for (auto t : m_vector_reloc_transf_matrix) {
-			translations += t.translation();
-			Vector3f e = t.rotation().eulerAngles(0, 1, 2);
-			if (e[0] < 0) e[0] += 2 * SOLAR_PI;
-			if (e[1] < 0) e[1] += 2 * SOLAR_PI;
-			if (e[2] < 0) e[2] += 2 * SOLAR_PI;
-			eulers += e;
-		}
-		translations /= m_nbRelocTransformMatrixRequest;
-		eulers /= m_nbRelocTransformMatrixRequest;
-		Maths::Matrix3f rot;
-		rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
-			* Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
-			* Maths::AngleAxisf(eulers[2], Vector3f::UnitZ());
+    m_vector_reloc_transf_matrix.push_back(transform);
+    // find mean transformation
+    if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
+
+        // test if all transformation matrix are coherent
+        for (u_int8_t i = 1; i < m_vector_reloc_transf_matrix.size(); i++) {
+            Vector3f dist(m_vector_reloc_transf_matrix[i](0, 3)-m_vector_reloc_transf_matrix[0](0, 3),
+                          m_vector_reloc_transf_matrix[i](1, 3)-m_vector_reloc_transf_matrix[0](1, 3),
+                          m_vector_reloc_transf_matrix[i](2, 3)-m_vector_reloc_transf_matrix[0](2, 3));
+
+            if (dist.norm() > m_maxDistanceRelocMatrix) {
+                m_relocTimer.restart();
+                m_vector_reloc_transf_matrix.clear();
+                LOG_INFO("Transformation matrix from relocalization not coherent");
+                return;
+            }
+        }
+
+        Vector3f translations(0.f, 0.f, 0.f);
+        Vector3f eulers(0.f, 0.f, 0.f);
+        for (auto t : m_vector_reloc_transf_matrix) {
+            translations += t.translation();
+            Vector3f e = t.rotation().eulerAngles(0, 1, 2);
+            if (e[0] < 0) e[0] += 2 * SOLAR_PI;
+            if (e[1] < 0) e[1] += 2 * SOLAR_PI;
+            if (e[2] < 0) e[2] += 2 * SOLAR_PI;
+            eulers += e;
+        }
+        translations /= m_nbRelocTransformMatrixRequest;
+        eulers /= m_nbRelocTransformMatrixRequest;
+        Maths::Matrix3f rot;
+        rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
+            * Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
+            * Maths::AngleAxisf(eulers[2], Vector3f::UnitZ());
         Transform3Df transform3D;
         transform3D.linear() = rot;
         transform3D.translation() = translations;
@@ -1009,13 +1030,13 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
             set3DTransformWorld(transform3D); // set T_ARr_to_World
             set3DTransformSolAR(transform3D);  // set T_ARr_to_SolAR
         }
-        else { // here we get as input T_ARr_SolAR and we adjust T_ARr_World 
+        else { // here we get as input T_ARr_SolAR and we adjust T_ARr_World
             Transform3Df curT_M_W = get3DTransformWorld();
             Transform3Df curT_M_SolAR = get3DTransformSolAR();
-            set3DTransformWorld(curT_M_W*curT_M_SolAR.inverse()*transform3D);  // adjust T_ARr_World 
+            set3DTransformWorld(curT_M_W*curT_M_SolAR.inverse()*transform3D);  // adjust T_ARr_World
             set3DTransformSolAR(transform3D);
         }
-            
+
         if (m_mappingStatus == BOOTSTRAP)
             m_mappingStatus = MAPPING;
         m_T_status = NEW_3DTRANSFORM;
@@ -1023,7 +1044,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
         m_isNeedReloc = false;
         m_vector_reloc_transf_matrix.clear();
         m_cumulatedDistance = 0.f; // reset cumulated distance when relocalized
-	}
+    }
 }
 
 /// @brief check if need to relocalize
@@ -1060,6 +1081,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::set3DTransformSolAR(const Tr
 {
     std::unique_lock<std::mutex> lock(m_mutexTransformSolAR);
     m_T_M_SolAR = transform3D;
+    LOG_INFO("m_T_M_SolAR = {}", m_T_M_SolAR.matrix());
 }
 
 /// @brief set last pose
