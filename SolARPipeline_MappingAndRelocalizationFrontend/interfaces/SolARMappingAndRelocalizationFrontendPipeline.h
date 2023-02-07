@@ -206,6 +206,12 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief set last pose
     void setLastPose(const Transform3Df& lastPose);
 
+    /*
+     * The algorithm used is described here:
+     * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
+     */
+    Eigen::Vector4f quaternionAverage(std::vector<Eigen::Vector4f> quaternions);
+
   private:
 
     // Relocalization, mapping and map update services
