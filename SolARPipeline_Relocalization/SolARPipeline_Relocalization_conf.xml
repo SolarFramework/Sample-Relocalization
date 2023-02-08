@@ -41,6 +41,10 @@
                         <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
                         <interface uuid="e0d6cc82-6af2-493d-901a-2384fca0b16f" name="IMatchesFilter" description="IMatchesFilter"/>
                 </component>
+                <component uuid="fd7fb607-144f-418c-bcf2-f7cf71532c22" name="SolARImageConvertorOpencv" description="SolARImageConvertorOpencv">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="9c982719-6cb4-4831-aa88-9e01afacbd16" name="IImageConvertor" description="IImageConvertor"/>
+		</component>
                 <component uuid="4d369049-809c-4e99-9994-5e8167bab808" name="SolARPoseEstimationSACPnpOpencv" description="SolARPoseEstimationSACPnpOpencv">
                         <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
                         <interface uuid="8dd889c5-e8e6-4b3b-92e4-34cf7442f272" name="I3DTransformSACFinderFrom2D3D" description="I3DTransformSACFinderFrom2D3D"/>
@@ -97,9 +101,17 @@
                 </component>
         </module>
 
+        <module uuid="4a43732c-a1b2-11eb-bcbc-0242ac130002" name="SolARModulePopSift" description="SolARModulePopSift" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModulePopSift/1.0.0/lib/x86_64/shared">
+		<component uuid="7fb2aace-a1b1-11eb-bcbc-0242ac130002" name="SolARDescritorsExtractorFromImagePopSift" description="SolARDescritorsExtractorFromImagePopSift">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="1cd4f5f1-6b74-413b-9725-69653aee48ef" name="IDescriptorsExtractorFromImage" description="IDescriptorsExtractorFromImage"/>
+		</component>
+        </module>
+
         <factory>
                 <bindings>
-                        <bind interface="IDescriptorsExtractorFromImage" to="SolARDescriptorsExtractorFromImageOpencv" />
+                        <!--bind interface="IDescriptorsExtractorFromImage" to="SolARDescriptorsExtractorFromImageOpencv" /-->
+                        <bind interface="IDescriptorsExtractorFromImage" to="SolARDescritorsExtractorFromImagePopSift" />
                         <bind interface="IDescriptorMatcher" to="SolARDescriptorMatcherKNNOpencv" />
                         <bind interface="IMapManager" to="SolARMapManager" scope="Singleton"/>
                         <bind interface="IPointCloudManager" to="SolARPointCloudManager" scope="Singleton"/>
@@ -113,6 +125,9 @@
                             <bind interface="IKeypointDetector" to="SolARKeypointDetectorOpencv"/>
                             <bind interface="IDescriptorsExtractor" to="SolARDescriptorsExtractorAKAZE2Opencv"/>
                         </inject>
+                        <inject to="SolARDescritorsExtractorFromImagePopSift">
+				<bind interface="IImageConvertor" to="SolARImageConvertorOpencv"/>
+			</inject>
                 </injects>
         </factory>
 
@@ -163,12 +178,25 @@
                 <configure component="SolARPoseEstimationSACPnpOpencv">
                         <property name="iterationsCount" type="int" value="500"/>
                         <property name="reprojError" type="float" value="3.0"/>
-                        <property name="confidence" type="float" value="0.99"/>
-                        <property name="minNbInliers" type="int" value="30"/>
-                        <property name="method" type="string" value="EPNP"/>
+                        <property name="confidence" type="float" value="0.95"/>
+                        <property name="minNbInliers" type="int" value="15"/>
+                        <property name="method" type="string" value="USAC_MAGSAC"/>
+                </configure>
+                <configure component="SolARDescritorsExtractorFromImagePopSift">
+			<property name="mode" type="string" value="PopSift"/>
+			<property name="imageMode" type="string" value="Unsigned Char"/>
+			<property name="nbOctaves" type="integer" value="3"/>
+			<property name="nbLevelPerOctave" type="integer" value="3"/>
+			<property name="sigma" type="float" value="1.6"/>
+			<property name="threshold" type="float" value="0.001"/>
+			<property name="edgeLimit" type="float" value="10.0"/>
+			<property name="downsampling" type="float" value="-1.0"/>
+			<property name="initialBlur" type="float" value="-1.0"/>
+			<property name="maxTotalKeypoints" type="uint" value="1000"/>
                 </configure>
                 <configure component="SolARKeyframeRetrieverFBOW">
-                        <property name="VOCpath" type="string" value="../../../../../data/fbow_voc/akaze.fbow"/>
+                        <!--property name="VOCpath" type="string" value="../../../../../data/fbow_voc/akaze.fbow"/-->
+                        <property name="VOCpath" type="string" value="../../../../../data/fbow_voc/popsift_uint8.fbow"/>
                         <property name="threshold" type="float" value="0.01"/>
                         <property name="level" type="int" value="3"/>
                         <property name="matchingDistanceRatio" type="float" value="0.8"/>
