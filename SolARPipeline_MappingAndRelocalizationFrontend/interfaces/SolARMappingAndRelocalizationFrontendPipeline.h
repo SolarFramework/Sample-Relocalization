@@ -273,6 +273,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     // Test if relocalized pose is coherent
     std::atomic<float> m_cumulatedDistance = 0.f;          // cumulated camera distance from last successful reloc
     float m_thresTranslationRatio = 0.2f;     // ratio multiplied with cumulated distance to define the distance threshold between reloc pose and ARr pose
+    float m_minCumulatedDistance = 0.05f;  // minimum cumulated distance to test if reloc pose is coherent with AR runtime pose
     float m_maxDistanceRelocMatrix = 0.1f;    // distance max used to check validity between consecutive matrix given by the Relocalization service
 
 };

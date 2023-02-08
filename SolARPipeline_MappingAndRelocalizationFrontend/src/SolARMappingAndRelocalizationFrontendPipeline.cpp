@@ -42,6 +42,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
         declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
+        declareProperty("minCumulatedDistance", m_minCumulatedDistance);
         declareProperty("maxDistanceRelocMatrix", m_maxDistanceRelocMatrix);
 
         LOG_DEBUG("All component injections declared");
@@ -843,9 +844,11 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             if (m_mappingStatus != BOOTSTRAP) {
                 auto poseArrInSolar = m_T_M_SolAR*pose;
                 Vector3f dist(poseArrInSolar(0, 3)-new_pose(0, 3), poseArrInSolar(1, 3)-new_pose(1, 3), poseArrInSolar(2, 3)-new_pose(2, 3));
-                LOG_DEBUG("Pose distance = {} cumulated distance = {} ratio = {}", dist.norm(), m_cumulatedDistance, m_thresTranslationRatio);
-                if (dist.norm() > m_cumulatedDistance*m_thresTranslationRatio) {
+                LOG_DEBUG("Pose distance = {} / cumulated distance = {} / min cumulated distance = {} / ratio = {} / cumulated distance*ration = {}",
+                         dist.norm(), m_cumulatedDistance, m_minCumulatedDistance, m_thresTranslationRatio, m_cumulatedDistance*m_thresTranslationRatio);
+                if ((m_cumulatedDistance > m_minCumulatedDistance) && (dist.norm() > m_cumulatedDistance*m_thresTranslationRatio)) {
                     LOG_WARNING("SolAR reloc pose is rejected because translation vector too different from that in AR runtime pose");
+                    m_cumulatedDistance = 0.f; // reset cumulated distance
                     return;
                 }
             }
@@ -855,6 +858,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
             findTransformation(new_pose * pose.inverse());
+            m_cumulatedDistance = 0.f; // reset cumulated distance when relocalized
         }
     }  catch (const std::exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
@@ -991,21 +995,6 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
     m_vector_reloc_transf_matrix.push_back(transform);
     // find mean transformation
     if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-
-        // test if all transformation matrix are coherent
-        for (u_int8_t i = 1; i < m_vector_reloc_transf_matrix.size(); i++) {
-            Vector3f dist(m_vector_reloc_transf_matrix[i](0, 3)-m_vector_reloc_transf_matrix[0](0, 3),
-                          m_vector_reloc_transf_matrix[i](1, 3)-m_vector_reloc_transf_matrix[0](1, 3),
-                          m_vector_reloc_transf_matrix[i](2, 3)-m_vector_reloc_transf_matrix[0](2, 3));
-
-            if (dist.norm() > m_maxDistanceRelocMatrix) {
-                m_relocTimer.restart();
-                m_vector_reloc_transf_matrix.clear();
-                LOG_INFO("Transformation matrix from relocalization not coherent");
-                return;
-            }
-        }
-
         Vector3f translations(0.f, 0.f, 0.f);
         std::vector<Vector4f> quaternions;
         for (auto t : m_vector_reloc_transf_matrix) {
@@ -1037,7 +1026,6 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
         m_relocTimer.restart();
         m_isNeedReloc = false;
         m_vector_reloc_transf_matrix.clear();
-        m_cumulatedDistance = 0.f; // reset cumulated distance when relocalized
     }
 }
 
