@@ -410,7 +410,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     if (clientContext->m_init) {
         LOG_WARNING("Pipeline has already been initialized");
         return FrameworkReturnCode::_SUCCESS;
-    }    
+    }
 
     clientContext->m_init = true;
 

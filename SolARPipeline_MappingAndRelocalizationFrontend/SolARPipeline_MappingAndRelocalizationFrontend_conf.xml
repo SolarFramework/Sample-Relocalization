@@ -151,6 +151,9 @@
         <configure component="SolARMappingAndRelocalizationFrontendPipeline">
             <property name="nbImagesBetweenRequest" access="rw" type="uint" value="3"/>
             <property name="nbRelocRequest" access="rw" type="uint" value="5"/>
+            <property name="thresholdTranslationRatio" access="rw" type="float" value="0.2" description="ratio multiplied with cumulated distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
+            <property name="minCumulatedDistance" access="rw" type="float" value="0.05" description="minimum cumulated distance to test if reloc pose is coherent with AR runtime pose"/>
+            <property name="maxDistanceRelocMatrix" access="rw" type="float" value="0.1" description="distance max used to check validity between consecutive matrix given by the Relocalization service"/>
         </configure>
 
         <configure component="SolARFiducialMarkerPoseEstimator">
