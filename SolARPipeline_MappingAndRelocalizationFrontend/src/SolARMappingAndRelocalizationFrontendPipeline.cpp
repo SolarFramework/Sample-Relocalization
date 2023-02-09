@@ -43,15 +43,18 @@ namespace RELOCALIZATION {
 // Public methods
 
 SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFrontendPipeline():ConfigurableBase(xpcf::toUUID<SolARMappingAndRelocalizationFrontendPipeline>())
-{    
+{
     try {
         declareInterface<api::pipeline::IAsyncRelocalizationPipeline>(this);
 
-        LOG_DEBUG("Components injection declaration");        
+        LOG_DEBUG("Components injection declaration");
         declareInjectable<api::pipeline::IServiceManagerPipeline>(m_serviceManager, true);
         declareInjectable<api::pipeline::IMapUpdatePipeline>(m_mapupdateService, true);
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
+        declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
+        declareProperty("minCumulatedDistance", m_minCumulatedDistance);
+        declareProperty("maxDistanceRelocMatrix", m_maxDistanceRelocMatrix);
 
         LOG_DEBUG("All component injections declared");
 
@@ -714,6 +717,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
             clientContext->m_maxTimeRequest = 0;
         else
             clientContext->m_maxTimeRequest = m_nbSecondsBetweenRelocRequest;
+        clientContext->m_cumulatedDistance = 0.f;
 
         LOG_DEBUG("Empty buffers");
 
@@ -950,6 +954,21 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
         // Check if pose is valid
         if (!poses[0].matrix().isZero()) {
+
+            // Update culumated distance
+            if (clientContext->m_mappingStatus != BOOTSTRAP) {
+                // transform exists -> already relocalized -> last pose exists
+                Transform3Df lastPose;
+                if (getLastPose(uuid, lastPose, DEVICE_POSE) != FrameworkReturnCode::_SUCCESS) {
+                    LOG_ERROR("Failed to get last pose");
+                    return FrameworkReturnCode::_ERROR_;
+                }
+                LOG_DEBUG("Last pose = {}", lastPose.matrix());
+                LOG_DEBUG("Current pose = {}", poses[0].matrix());
+                Vector3f diffTranslation(lastPose(0, 3)-poses[0](0, 3), lastPose(1, 3)-poses[0](1, 3), lastPose(2, 3)-poses[0](2, 3));
+                LOG_DEBUG("Distance between 2 last poses = {}", diffTranslation.norm());
+                clientContext->m_cumulatedDistance = clientContext->m_cumulatedDistance + diffTranslation.norm();
+            }
 
             // Store last pose received
             setLastPose(clientContext, poses[0]);
@@ -1208,8 +1227,26 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             LOG_INFO("Relocalization succeeded");
             LOG_DEBUG("Client original pose: \n{}", pose.matrix());
             LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
+
+            // test reloc pose by comparing it to device pose, reject the reloc if big difference is observed
+            if (clientContext->m_mappingStatus != BOOTSTRAP) {
+                auto poseArrInSolar = clientContext->m_T_M_SolAR*pose;
+                Vector3f dist(poseArrInSolar(0, 3)-new_pose(0, 3), poseArrInSolar(1, 3)-new_pose(1, 3), poseArrInSolar(2, 3)-new_pose(2, 3));
+                LOG_DEBUG("Pose distance = {} / cumulated distance = {} / min cumulated distance = {} / ratio = {} / cumulated distance*ration = {}",
+                         dist.norm(), clientContext->m_cumulatedDistance, m_minCumulatedDistance, m_thresTranslationRatio, clientContext->m_cumulatedDistance*m_thresTranslationRatio);
+                if ((clientContext->m_cumulatedDistance > m_minCumulatedDistance) && (dist.norm() > clientContext->m_cumulatedDistance*m_thresTranslationRatio)) {
+                    LOG_WARNING("SolAR reloc pose is rejected because translation vector too different from that in AR runtime pose");
+                    clientContext->m_cumulatedDistance = 0.f; // reset cumulated distance
+                    return;
+                }
+            }
+            else {
+                LOG_WARNING("The first reloc pose is accepted without any condition");
+            }
+
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
             findTransformation(clientContext, new_pose * pose.inverse());
+            clientContext->m_cumulatedDistance = 0.f; // reset cumulated distance when relocalized
         }
     }  catch (const exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
@@ -1386,25 +1423,19 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
     clientContext->m_vector_reloc_transf_matrix.push_back(transform);
 	// find mean transformation
     if (clientContext->m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-		Vector3f translations(0.f, 0.f, 0.f); 
-		Vector3f eulers(0.f, 0.f, 0.f);
+        Vector3f translations(0.f, 0.f, 0.f);
+        std::vector<Vector4f> quaternions;
         for (auto t : clientContext->m_vector_reloc_transf_matrix) {
-			translations += t.translation();
-			Vector3f e = t.rotation().eulerAngles(0, 1, 2);
-			if (e[0] < 0) e[0] += 2 * SOLAR_PI;
-			if (e[1] < 0) e[1] += 2 * SOLAR_PI;
-			if (e[2] < 0) e[2] += 2 * SOLAR_PI;
-			eulers += e;
-		}
-		translations /= m_nbRelocTransformMatrixRequest;
-		eulers /= m_nbRelocTransformMatrixRequest;
-		Maths::Matrix3f rot;
-		rot = Maths::AngleAxisf(eulers[0], Vector3f::UnitX())
-			* Maths::AngleAxisf(eulers[1], Vector3f::UnitY())
-			* Maths::AngleAxisf(eulers[2], Vector3f::UnitZ());
+            LOG_INFO("Input Rotation mat = {}", t.rotation());
+            translations += t.translation();
+            Quaternionf q(t.rotation());
+            quaternions.emplace_back(q.x(), q.y(), q.z(), q.w());
+        }
+        translations /= static_cast<float>(m_nbRelocTransformMatrixRequest);
         Transform3Df transform3D;
-        transform3D.linear() = rot;
+        transform3D.linear() = Quaternionf(quaternionAverage(quaternions)).toRotationMatrix();
         transform3D.translation() = translations;
+
         LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", transform3D.matrix());
         if (clientContext->m_T_M_SolAR.isApprox(Transform3Df::Identity())) { // has not been initialized
             set3DTransformWorld(clientContext, transform3D); // set T_ARr_to_World
@@ -1459,7 +1490,6 @@ void SolARMappingAndRelocalizationFrontendPipeline::set3DTransformWorld(const SR
 /// @brief set 3D transform SolAR
 void SolARMappingAndRelocalizationFrontendPipeline::set3DTransformSolAR(const SRef<ClientContext> clientContext,
                                                                         const Transform3Df& transform3D)
-
 {
     std::unique_lock<std::mutex> lock(clientContext->m_mutexTransformSolAR);
     clientContext->m_T_M_SolAR = transform3D;
@@ -1471,6 +1501,64 @@ void SolARMappingAndRelocalizationFrontendPipeline::setLastPose(const SRef<Clien
 {
     unique_lock<mutex> lock(clientContext->m_mutexLastPose);
     clientContext->m_lastPose = lastPose;
+}
+
+/// Method to find the average of a set of rotation quaternions using Singular Value Decomposition
+/*
+ * The algorithm used is described here:
+ * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
+ */
+Eigen::Vector4f SolARMappingAndRelocalizationFrontendPipeline::quaternionAverage(std::vector<Eigen::Vector4f> quaternions)
+
+{
+    if (quaternions.size() == 0)
+    {
+        std::cerr << "Error trying to calculate the average quaternion of an empty set!\n";
+        return Eigen::Vector4f::Zero();
+    }
+
+    // first build a 4x4 matrix which is the elementwise sum of the product of each quaternion with itself
+    Eigen::Matrix4f A = Eigen::Matrix4f::Zero();
+
+    for (int q=0; q<quaternions.size(); ++q)
+        A += quaternions[q] * quaternions[q].transpose();
+
+    // normalise with the number of quaternions
+    A /= quaternions.size();
+
+    // Compute the SVD of this 4x4 matrix
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::VectorXf singularValues = svd.singularValues();
+    Eigen::MatrixXf U = svd.matrixU();
+
+    // find the eigen vector corresponding to the largest eigen value
+    int largestEigenValueIndex;
+    float largestEigenValue;
+    bool first = true;
+
+    for (int i=0; i<singularValues.rows(); ++i)
+    {
+        if (first)
+        {
+            largestEigenValue = singularValues(i);
+            largestEigenValueIndex = i;
+            first = false;
+        }
+        else if (singularValues(i) > largestEigenValue)
+        {
+            largestEigenValue = singularValues(i);
+            largestEigenValueIndex = i;
+        }
+    }
+
+    Eigen::Vector4f average;
+    average(0) = U(0, largestEigenValueIndex);
+    average(1) = U(1, largestEigenValueIndex);
+    average(2) = U(2, largestEigenValueIndex);
+    average(3) = U(3, largestEigenValueIndex);
+
+    return average;
 }
 
 } // namespace RELOCALIZATION

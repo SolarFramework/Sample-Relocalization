@@ -117,6 +117,9 @@ class ClientContext
         mutable std::mutex                  m_mutexLastPose;
 
         std::mutex                          m_mutexFindTransform;
+
+        // Test if relocalized pose is coherent
+        std::atomic<float> m_cumulatedDistance = 0.f;          // cumulated camera distance from last successful reloc
 };
 
 /**
@@ -332,6 +335,12 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief set last pose
     void setLastPose(const SRef<ClientContext> clientContext, const Transform3Df& lastPose);
 
+    /*
+     * The algorithm used is described here:
+     * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
+     */
+    Eigen::Vector4f quaternionAverage(std::vector<Eigen::Vector4f> quaternions);
+
   private:
 
     // Map of current clients (UUID) with the context for each one
@@ -370,6 +379,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     int m_nbSecondsBetweenRelocRequest = 30;
     int m_nbRelocTransformMatrixRequest = 3;
+
+    float m_thresTranslationRatio = 0.2f;     // ratio multiplied with cumulated distance to define the distance threshold between reloc pose and ARr pose
+    float m_minCumulatedDistance = 0.05f;  // minimum cumulated distance to test if reloc pose is coherent with AR runtime pose
+    float m_maxDistanceRelocMatrix = 0.1f;    // distance max used to check validity between consecutive matrix given by the Relocalization service
+
 };
 
 } // namespace RELOCALIZATION
