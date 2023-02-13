@@ -995,19 +995,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
     m_vector_reloc_transf_matrix.push_back(transform);
     // find mean transformation
     if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-        Vector3f translations(0.f, 0.f, 0.f);
-        std::vector<Vector4f> quaternions;
-        for (auto t : m_vector_reloc_transf_matrix) {
-            LOG_INFO("Input Rotation mat = {}", t.rotation());
-            translations += t.translation();
-            Quaternionf q(t.rotation());
-            quaternions.emplace_back(q.x(), q.y(), q.z(), q.w());
-        }
-        translations /= static_cast<float>(m_nbRelocTransformMatrixRequest);
-        Transform3Df transform3D;
-        transform3D.linear() = Quaternionf(quaternionAverage(quaternions)).toRotationMatrix();
-        transform3D.translation() = translations;
-
+        Transform3Df transform3D = transform3DAverage(m_vector_reloc_transf_matrix);
         LOG_INFO("Mean transformation matrix from device to SolAR:\n{}", transform3D.matrix());
         if (m_T_M_SolAR.isApprox(Transform3Df::Identity())) { // has not been initialized
             set3DTransformWorld(transform3D); // set T_ARr_to_World
@@ -1071,63 +1059,6 @@ void SolARMappingAndRelocalizationFrontendPipeline::setLastPose(const Transform3
 {
     std::unique_lock<std::mutex> lock(m_mutexLastPose);
     m_lastPose = lastPose;
-}
-
-/// Method to find the average of a set of rotation quaternions using Singular Value Decomposition
-/*
- * The algorithm used is described here:
- * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
- */
-Eigen::Vector4f SolARMappingAndRelocalizationFrontendPipeline::quaternionAverage(std::vector<Eigen::Vector4f> quaternions)
-{
-    if (quaternions.size() == 0)
-    {
-        std::cerr << "Error trying to calculate the average quaternion of an empty set!\n";
-        return Eigen::Vector4f::Zero();
-    }
-
-    // first build a 4x4 matrix which is the elementwise sum of the product of each quaternion with itself
-    Eigen::Matrix4f A = Eigen::Matrix4f::Zero();
-
-    for (int q=0; q<quaternions.size(); ++q)
-        A += quaternions[q] * quaternions[q].transpose();
-
-    // normalise with the number of quaternions
-    A /= quaternions.size();
-
-    // Compute the SVD of this 4x4 matrix
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-    Eigen::VectorXf singularValues = svd.singularValues();
-    Eigen::MatrixXf U = svd.matrixU();
-
-    // find the eigen vector corresponding to the largest eigen value
-    int largestEigenValueIndex;
-    float largestEigenValue;
-    bool first = true;
-
-    for (int i=0; i<singularValues.rows(); ++i)
-    {
-        if (first)
-        {
-            largestEigenValue = singularValues(i);
-            largestEigenValueIndex = i;
-            first = false;
-        }
-        else if (singularValues(i) > largestEigenValue)
-        {
-            largestEigenValue = singularValues(i);
-            largestEigenValueIndex = i;
-        }
-    }
-
-    Eigen::Vector4f average;
-    average(0) = U(0, largestEigenValueIndex);
-    average(1) = U(1, largestEigenValueIndex);
-    average(2) = U(2, largestEigenValueIndex);
-    average(3) = U(3, largestEigenValueIndex);
-
-    return average;
 }
 
 } // namespace RELOCALIZATION
