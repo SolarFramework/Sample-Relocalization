@@ -335,12 +335,6 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief set last pose
     void setLastPose(const SRef<ClientContext> clientContext, const Transform3Df& lastPose);
 
-    /*
-     * The algorithm used is described here:
-     * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
-     */
-    Eigen::Vector4f quaternionAverage(std::vector<Eigen::Vector4f> quaternions);
-
   private:
 
     // Map of current clients (UUID) with the context for each one
