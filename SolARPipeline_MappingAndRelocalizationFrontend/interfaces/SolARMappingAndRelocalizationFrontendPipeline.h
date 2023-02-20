@@ -191,11 +191,17 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief check if need to relocalize
     bool checkNeedReloc();
 
-    /// @brief get 3D transform
-    Transform3Df get3DTransform();
+    /// @brief get 3D transform AR runtime to World 
+    Transform3Df get3DTransformWorld();
 
-    /// @brief set 3D transform
-    void set3DTransform(const Transform3Df& transform3D);
+    /// @brief get 3D transform AR runtime to SolAR 
+    Transform3Df get3DTransformSolAR();
+
+    /// @brief set 3D transform AR runtime to World 
+    void set3DTransformWorld(const Transform3Df& transform3D);
+
+    /// @brief set 3D transform AR runtime to SolAR
+    void set3DTransformSolAR(const Transform3Df& transform3D);
 
     /// @brief set last pose
     void setLastPose(const Transform3Df& lastPose);
@@ -215,6 +221,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     bool m_rectificationOK = false; // Indicate if rectification parameters have been set (for stereo)
     bool m_started = false;         // Indicate if pipeline il started
     bool m_tasksStarted = false;    // Indicate if tasks are started
+    bool m_isTransformS2WSet = false;  // Indicate if SolAR to World transform has been set 
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
@@ -234,9 +241,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     xpcf::DropBuffer<DropBufferMappingEntry> m_dropBufferMapping;
 
     // 3D transformation matrix from client to SolAR coordinates system
-    SolAR::datastructure::Transform3Df  m_T_M_W;
-    std::mutex                          m_mutexTransform;
-    std::atomic<TransformStatus>        m_T_M_W_status;
+    SolAR::datastructure::Transform3Df  m_T_M_World;  // transform from Device (AR runtime) to World 
+    SolAR::datastructure::Transform3Df  m_T_M_SolAR;  // transform from Device (AR runtime) to SolAR 
+    std::mutex                          m_mutexTransformWorld;
+    std::mutex                          m_mutexTransformSolAR;
+    std::atomic<TransformStatus>        m_T_status;  // status of 3D transform 
     float_t m_confidence = 0;
     std::atomic<MappingStatus>          m_mappingStatus;
 
@@ -254,6 +263,13 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     mutable std::mutex                  m_mutexLastPose;
 
     std::mutex                          m_mutexFindTransform;
+
+    // Test if relocalized pose is coherent
+    std::atomic<float> m_cumulativeDistance = 0.f;          // cumulative camera distance from last successful reloc
+    float m_thresTranslationRatio = 0.2f;     // ratio multiplied with cumulative distance to define the distance threshold between reloc pose and ARr pose
+    float m_minCumulativeDistance = 0.05f;  // minimum cumulative distance to test if reloc pose is coherent with AR runtime pose
+    float m_maxDistanceRelocMatrix = 0.1f;    // distance max used to check validity between consecutive matrix given by the Relocalization service
+
 };
 
 } // namespace RELOCALIZATION

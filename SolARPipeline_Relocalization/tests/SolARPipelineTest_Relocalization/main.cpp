@@ -19,6 +19,7 @@
 #include "xpcf/xpcf.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
 #include "api/input/devices/ICamera.h"
+#include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
 #include "api/display/I3DPointsViewer.h"
 #include "api/storage/IPointCloudManager.h"
@@ -56,6 +57,9 @@ int main(int argc, char *argv[]){
         }
         auto gRelocalizationPipeline = componentMgr->resolve<pipeline::IRelocalizationPipeline>();
 		auto gCamera = componentMgr->resolve<input::devices::ICamera>();
+        auto gArDevice = componentMgr->resolve<input::devices::IARDevice>();
+        CameraRigParameters camRigParams = gArDevice->getCameraParameters();
+        CameraParameters camParams = camRigParams.cameraParams[0];
 		auto gImageViewer = componentMgr->resolve<display::IImageViewer>();
 		auto gViewer3D = componentMgr->resolve<display::I3DPointsViewer>();
 		auto gPointCloudManager = componentMgr->resolve<storage::IPointCloudManager>();
@@ -70,9 +74,6 @@ int main(int argc, char *argv[]){
 			LOG_ERROR("Cannot start camera");
 			return -1;
 		}
-		// get camera parameters
-		CameraParameters camParams = gCamera->getParameters();
-		// set camera parameters
 		gRelocalizationPipeline->setCameraParameters(camParams);
         // start pipeline
 		if (gRelocalizationPipeline->start() != FrameworkReturnCode::_SUCCESS) {
