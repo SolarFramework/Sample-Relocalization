@@ -53,7 +53,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareProperty("nbSecondsBetweenRequest", m_nbSecondsBetweenRelocRequest);
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
-        declareProperty("minCumulatedDistance", m_minCumulatedDistance);
+        declareProperty("minCumulativeDistance", m_minCumulativeDistance);
         declareProperty("maxDistanceRelocMatrix", m_maxDistanceRelocMatrix);
 
         LOG_DEBUG("All component injections declared");
@@ -717,7 +717,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
             clientContext->m_maxTimeRequest = 0;
         else
             clientContext->m_maxTimeRequest = m_nbSecondsBetweenRelocRequest;
-        clientContext->m_cumulatedDistance = 0.f;
+        clientContext->m_cumulativeDistance = 0.f;
 
         LOG_DEBUG("Empty buffers");
 
@@ -955,7 +955,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         // Check if pose is valid
         if (!poses[0].matrix().isZero()) {
 
-            // Update culumated distance
+            // Update cumulative distance
             if (clientContext->m_mappingStatus != BOOTSTRAP) {
                 // transform exists -> already relocalized -> last pose exists
                 Transform3Df lastPose;
@@ -967,7 +967,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                 LOG_DEBUG("Current pose = {}", poses[0].matrix());
                 Vector3f diffTranslation(lastPose(0, 3)-poses[0](0, 3), lastPose(1, 3)-poses[0](1, 3), lastPose(2, 3)-poses[0](2, 3));
                 LOG_DEBUG("Distance between 2 last poses = {}", diffTranslation.norm());
-                clientContext->m_cumulatedDistance = clientContext->m_cumulatedDistance + diffTranslation.norm();
+                clientContext->m_cumulativeDistance = clientContext->m_cumulativeDistance + diffTranslation.norm();
             }
 
             // Store last pose received
@@ -1232,11 +1232,11 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             if (clientContext->m_mappingStatus != BOOTSTRAP) {
                 auto poseArrInSolar = clientContext->m_T_M_SolAR*pose;
                 Vector3f dist(poseArrInSolar(0, 3)-new_pose(0, 3), poseArrInSolar(1, 3)-new_pose(1, 3), poseArrInSolar(2, 3)-new_pose(2, 3));
-                LOG_DEBUG("Pose distance = {} / cumulated distance = {} / min cumulated distance = {} / ratio = {} / cumulated distance*ration = {}",
-                         dist.norm(), clientContext->m_cumulatedDistance, m_minCumulatedDistance, m_thresTranslationRatio, clientContext->m_cumulatedDistance*m_thresTranslationRatio);
-                if ((clientContext->m_cumulatedDistance > m_minCumulatedDistance) && (dist.norm() > clientContext->m_cumulatedDistance*m_thresTranslationRatio)) {
+                LOG_DEBUG("Pose distance = {} / cumulative distance = {} / min cumulative distance = {} / ratio = {} / cumulative distance*ration = {}",
+                         dist.norm(), clientContext->m_cumulativeDistance, m_minCumulativeDistance, m_thresTranslationRatio, clientContext->m_cumulativeDistance*m_thresTranslationRatio);
+                if ((clientContext->m_cumulativeDistance > m_minCumulativeDistance) && (dist.norm() > clientContext->m_cumulativeDistance*m_thresTranslationRatio)) {
                     LOG_WARNING("SolAR reloc pose is rejected because translation vector too different from that in AR runtime pose");
-                    clientContext->m_cumulatedDistance = 0.f; // reset cumulated distance
+                    clientContext->m_cumulativeDistance = 0.f; // reset cumulative distance
                     return;
                 }
             }
@@ -1246,7 +1246,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
 
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", (new_pose * pose.inverse()).matrix());
             findTransformation(clientContext, new_pose * pose.inverse());
-            clientContext->m_cumulatedDistance = 0.f; // reset cumulated distance when relocalized
+            clientContext->m_cumulativeDistance = 0.f; // reset cumulative distance when relocalized
         }
     }  catch (const exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
