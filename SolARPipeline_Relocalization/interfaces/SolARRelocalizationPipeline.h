@@ -43,6 +43,7 @@
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
 #include "api/storage/IMapManager.h"
+#include "api/storage/ICameraParametersManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
 #include "api/image/IImageConvertor.h"
 #include "api/geom/IUndistortPoints.h"
@@ -120,9 +121,10 @@ public:
     /// @param[in] image: the image to process
     /// @param[out] pose: the new calculated pose
     /// @param[out] confidence: the confidence score
+    /// @param[in] poseCoarse: (optional) coarse pose which needs to be refined by reloc, by default, poseCoarse equals identity matrix meaning that no coarse pose is provided
     /// @return FrameworkReturnCode::_SUCCESS if the processing is successful, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
-                                                 SolAR::datastructure::Transform3Df& pose, float_t & confidence) override;
+                                                 SolAR::datastructure::Transform3Df& pose, float_t & confidence, const Transform3Df& poseCoarse = Transform3Df::Identity()) override;
 
 	/// @brief Request to the relocalization pipeline to get the map
 	/// @param[out] map the output map
@@ -140,6 +142,7 @@ private:
 	bool m_initOK = false, m_cameraOK = false, m_started = false, m_isMap = false;
     int m_minNbInliers;	
 	int m_nbRelocFails;
+    float m_confidenceSigma;  // sigma used to compute confidence score from number of inliers 
 
     // Camera parameters
     CameraParameters                                        m_camParams;
@@ -158,6 +161,7 @@ private:
     SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>  m_pnpRansac;
     SRef<features::IMatchesFilter>                          m_matchesFilter;
     SRef<geom::IUndistortPoints>							m_undistortKeypoints;
+    SRef<api::storage::ICameraParametersManager>            m_cameraParametersManager;
 };
 
 } // namespace RELOCALIZATION
