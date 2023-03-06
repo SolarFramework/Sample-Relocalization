@@ -140,6 +140,7 @@
             <property name="thresholdTranslationRatio" access="rw" type="float" value="0.2" description="ratio multiplied with cumulative distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minCumulativeDistance" access="rw" type="float" value="0.05" description="minimum cumulative distance to test if reloc pose is coherent with AR runtime pose"/>
             <property name="maxDistanceRelocMatrix" access="rw" type="float" value="0.1" description="distance max used to check validity between consecutive matrix given by the Relocalization service"/>
+            <property name="thresholdRelocConfidence" access="rw" type="float" value="0.6" description="threshold on reloc confidence score to check if a reloc pose is reliable to initialize transform from AR runtime to SolAR"/>
         </configure>
 
         <configure component="SolARFiducialMarkerPoseEstimator">
