@@ -307,7 +307,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                     // when nb inliers = 2*sigma + m_minNbInliers, confidence is close to 1 
                     confidence = 1.f - std::exp(- (static_cast<float>(inliers.size()) - static_cast<float>(m_minNbInliers)) * (static_cast<float>(inliers.size()) - static_cast<float>(m_minNbInliers)) 
                         / (2. * m_confidenceSigma * m_confidenceSigma));
-                    LOG_INFO("Confidence score = {}", confidence);
+                    LOG_DEBUG("Confidence score = {}", confidence);
                 }
                 LOG_DEBUG("Got the new pose: relocalization successful");
                 return FrameworkReturnCode::_SUCCESS;
