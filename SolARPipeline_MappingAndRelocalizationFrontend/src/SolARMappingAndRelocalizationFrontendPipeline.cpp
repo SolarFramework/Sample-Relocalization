@@ -54,7 +54,6 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
         declareProperty("minCumulativeDistance", m_minCumulativeDistance);
-        declareProperty("maxDistanceRelocMatrix", m_maxDistanceRelocMatrix);
         declareProperty("thresholdRelocConfidence", m_thresRelocConfidence);
 
         LOG_DEBUG("All component injections declared");
@@ -1224,11 +1223,7 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     float confidence;
 
     try {
-        Transform3Df poseCoarse = Transform3Df::Identity();
-        auto curTSolAR = get3DTransformSolAR(clientContext);
-        if (!curTSolAR.isApprox(Transform3Df::Identity()))  // if T defined compute coarse pose in SolAR
-            poseCoarse = curTSolAR*pose;
-        if (clientContext->m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence, poseCoarse) == SolAR::FrameworkReturnCode::_SUCCESS) {
+        if (clientContext->m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
             LOG_INFO("Relocalization succeeded");
             LOG_DEBUG("Client original pose: \n{}", pose.matrix());
             LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
@@ -1246,8 +1241,8 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
                 }
             }
             else {
-                if (confidence < m_thresRelocConfidence) {
-                    LOG_WARNING("Reloc confidence score {} is lower than {} wait for next reloc", confidence, m_thresRelocConfidence);
+                if (confidence <= m_thresRelocConfidence) {
+                    LOG_WARNING("Reloc confidence score {} is lower than or equal to {} wait for next reloc", confidence, m_thresRelocConfidence);
                     return;
                 }
                 LOG_INFO("Reloc with confidence score {} is used to initialize the transform from AR runtime to SolAR", confidence);

@@ -37,9 +37,6 @@ using namespace datastructure;
 // Nb images between 2 pipeline requests
 #define NB_IMAGES_BETWEEN_REQUESTS 10
 
-// minimal reloc confidence score to compute transform from AR runtime to SolAR
-#define THRESHOLD_RELOC_CONFIDENCE 0.6
-
 int main(int argc, char *argv[]){
 
 #if NDEBUG
@@ -110,7 +107,6 @@ int main(int argc, char *argv[]){
         std::vector<SRef<Image>> images;
         std::vector<Transform3Df> poses;
         std::chrono::system_clock::time_point timestamp;
-        Transform3Df transformARrToSolAR = Transform3Df::Identity();
         while (gArDevice->getData(images, poses, timestamp) == FrameworkReturnCode::_SUCCESS) {
             if (nb_images != NB_IMAGES_BETWEEN_REQUESTS) {
                 nb_images++;
@@ -124,16 +120,9 @@ int main(int argc, char *argv[]){
             SRef<Image> image = images[INDEX_USE_CAMERA];
             Transform3Df pose = poses[INDEX_USE_CAMERA];
             Transform3Df poseReloc;
-            Transform3Df poseCoarse = Transform3Df::Identity();
-            if (!transformARrToSolAR.isApprox(Transform3Df::Identity())) {
-                poseCoarse = transformARrToSolAR * pose;
-            }
             SRef<Image> displayImage = image->copy();
-            if (gRelocalizationPipeline->relocalizeProcessRequest(image, poseReloc, confidence, poseCoarse) == FrameworkReturnCode::_SUCCESS) {
+            if (gRelocalizationPipeline->relocalizeProcessRequest(image, poseReloc, confidence) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG("Relocalization succeeds");
-                if (confidence >= THRESHOLD_RELOC_CONFIDENCE && transformARrToSolAR.isApprox(Transform3Df::Identity())) {
-                    transformARrToSolAR = poseReloc * pose.inverse();
-                }
                 framePoses.push_back(poseReloc);
             }
             else
