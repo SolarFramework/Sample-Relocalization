@@ -156,6 +156,11 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @return FrameworkReturnCode::_SUCCESS if the client is unregistered, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode unregisterClient(const std::string & uuid) override;
 
+    /// @brief Return all current clients UUID
+    /// @param[out] uuidList: the list of UUID of all clients currently registered
+    /// @return FrameworkReturnCode::_SUCCESS if the method succeeds, else FrameworkReturnCode::_ERROR_
+    FrameworkReturnCode getAllClientsUUID(std::vector<std::string> & uuidList) const override;
+
     /// @brief Initialization of the pipeline
     /// @return FrameworkReturnCode::_SUCCESS if the init succeed, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode init()

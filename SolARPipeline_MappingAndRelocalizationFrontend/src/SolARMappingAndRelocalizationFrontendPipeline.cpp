@@ -297,6 +297,19 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
     return FrameworkReturnCode::_SUCCESS;
 }
 
+FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getAllClientsUUID(std::vector<std::string> & uuidList) const
+{
+    unique_lock<mutex> lock(m_mutexClientMap);
+    if (m_clientsMap.size() > 0) {
+        for (const auto& [k, v] : m_clientsMap) {
+            uuidList.push_back(k);
+        }
+        return FrameworkReturnCode::_SUCCESS;
+    }
+    else
+        return FrameworkReturnCode::_ERROR_;
+}
+
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string & uuid)
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::init");
