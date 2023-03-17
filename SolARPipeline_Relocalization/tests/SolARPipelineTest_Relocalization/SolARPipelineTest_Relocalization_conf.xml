@@ -168,8 +168,8 @@
                         <property name="cameraParametersManagerFileName" type="string" value="cameraParameters.bin"/>
 			<property name="covisibilityGraphFileName" type="string" value="covisibility_graph.bin"/>
 			<property name="keyframeRetrieverFileName" type="string" value="keyframe_retriever.bin"/>
-			<property name="reprojErrorThreshold" type="float" value="10.0"/>
-			<property name="thresConfidence" type="float" value="0.25"/>
+			<property name="reprojErrorThreshold" type="float" value="5.0"/>
+			<property name="thresConfidence" type="float" value="0.03"/>
 		</configure>
 		<configure component="SolARKeypointDetectorOpencv">
 			<property name="type" type="string" value="AKAZE2"/>
@@ -203,7 +203,7 @@
 		<configure component="SolARPoseEstimationSACPnpOpencv">
 			<property name="iterationsCount" type="int" value="500"/>
 			<property name="reprojError" type="float" value="3.0"/>
-			<property name="confidence" type="float" value="0.95"/>
+			<property name="confidence" type="float" value="0.96"/>
 			<property name="minNbInliers" type="int" value="15"/>
 			<property name="method" type="string" value="USAC_MAGSAC"/>
 		</configure>
@@ -222,7 +222,7 @@
 		<configure component="SolARKeyframeRetrieverFBOW">
 			<!--property name="VOCpath" type="string" value="../../../../../data/fbow_voc/akaze.fbow"/-->
 			<property name="VOCpath" type="string" value="../../../../../data/fbow_voc/popsift_uint8.fbow"/>
-			<property name="threshold" type="float" value="0.015"/>
+			<property name="threshold" type="float" value="0.005"/>
 			<property name="level" type="int" value="3"/>
 			<property name="matchingDistanceRatio" type="float" value="0.8"/>
 			<property name="matchingDistanceMax" type="float" value="500"/>
