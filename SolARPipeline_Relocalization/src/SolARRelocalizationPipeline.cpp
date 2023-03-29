@@ -24,7 +24,7 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
-#define NB_PROCESS_KEYFRAMES 5
+#define NB_PROCESS_KEYFRAMES 10
 #define THRES_NB_RELOC_FAILS 5
 
 // Public methods

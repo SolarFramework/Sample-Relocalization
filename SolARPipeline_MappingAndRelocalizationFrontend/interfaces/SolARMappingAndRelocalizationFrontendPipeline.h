@@ -185,8 +185,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief send requests to the mapping service
     void processMapping();
 
-	/// @brief find transformation matrix
-	void findTransformation(Transform3Df transform);
+	  /// @brief find transformation matrix
+	  bool findTransformation(Transform3Df transform);
 
     /// @brief check if need to relocalize
     bool checkNeedReloc();
@@ -269,6 +269,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     float m_thresTranslationRatio = 0.2f;     // ratio multiplied with cumulative distance to define the distance threshold between reloc pose and ARr pose
     float m_minCumulativeDistance = 0.05f;  // minimum cumulative distance to test if reloc pose is coherent with AR runtime pose
     float m_thresRelocConfidence = 0.f;      // threshold on confidence score to tell if reloc is good enough to initialize the transform from ARr to SolAR
+    float m_poseDisparityTolerance = 0.1f;   // when initializing the first transform device to solar, the list of reloc transforms must be close to each other in translation
 
 };
 
