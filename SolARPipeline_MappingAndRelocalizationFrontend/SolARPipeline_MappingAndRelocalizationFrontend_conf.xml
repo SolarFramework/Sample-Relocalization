@@ -153,6 +153,7 @@
             <property name="nbRelocRequest" access="rw" type="uint" value="5"/>
             <property name="thresholdTranslationRatio" access="rw" type="float" value="0.1" description="ratio multiplied with cumulative distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minCumulativeDistance" access="rw" type="float" value="0.05" description="minimum cumulative distance to test if reloc pose is coherent with AR runtime pose"/>
+            <property name="poseDisparityToleranceInit" access="rw" type="float" value="0.1" description="tolerance in translation disparity when initializing the tranform from ar device to solar"/>
             <property name="thresholdRelocConfidence" access="rw" type="float" value="0.0" description="threshold on reloc confidence score to check if a reloc pose is reliable to initialize transform from AR runtime to SolAR"/>
           </configure>
 
