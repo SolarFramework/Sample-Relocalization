@@ -40,6 +40,9 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
+#define CLIENT_ACTIVITY_DELAY_IF_STOPPED 300 // Delay used to test if a client is still active in "stopped" state (in seconds)
+#define CLIENT_ACTIVITY_DELAY_IF_STARTED 10 // Delay used to test if a client is still active in "started" state (in seconds)
+
 // Public methods
 
 SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFrontendPipeline():ConfigurableBase(xpcf::toUUID<SolARMappingAndRelocalizationFrontendPipeline>())
@@ -58,7 +61,19 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
 
         LOG_DEBUG("All component injections declared");
 
-        LOG_DEBUG("Set the asynchronous task for relocalization");
+        LOG_DEBUG("Set the asynchronous task for relocalization");        
+
+        // Clients activity task
+        if (m_clientsActivityTask == nullptr) {
+            auto fnClientsActivity = [&]() {
+                testClientsActivity();
+            };
+
+            m_clientsActivityTask = new xpcf::DelegateTask(fnClientsActivity);
+        }
+
+        // Start clients activity task
+        m_clientsActivityTask->start();
 
         // Relocalization processing function
         if (m_relocalizationTask == nullptr) {
@@ -105,6 +120,9 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline destructor")
 
     if (m_tasksStarted) {
+        LOG_DEBUG("Stop clients activity task");
+        m_clientsActivityTask->stop();
+
         LOG_DEBUG("Stop relocalization task");
         m_relocalizationTask->stop();
         m_relocalizationMarkersTask->stop();
@@ -115,6 +133,7 @@ SolARMappingAndRelocalizationFrontendPipeline::~SolARMappingAndRelocalizationFro
         m_tasksStarted = false;
     }
 
+    delete m_clientsActivityTask;
     delete m_relocalizationTask;
     delete m_relocalizationMarkersTask;
     delete m_mappingTask;
@@ -261,6 +280,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
 
     LOG_DEBUG("New client registered with UUID: {}", uuid);
 
+    LOG_DEBUG("Start client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     return FrameworkReturnCode::_SUCCESS;
 }
 
@@ -320,6 +342,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
         LOG_ERROR("Unknown client with UUID: {}", uuid);
         return FrameworkReturnCode::_ERROR_;
     }
+
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
 
     // Stop services if needed
     if (clientContext->m_started)
@@ -452,6 +477,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     clientContext->m_PipelineMode = pipelineMode;
 
     if (pipelineMode == RELOCALIZATION_ONLY) {
@@ -480,6 +508,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getProcessing
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     pipelineMode = clientContext->m_PipelineMode;
 
     return FrameworkReturnCode::_SUCCESS;
@@ -495,6 +526,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         LOG_ERROR("Unknown client with UUID: {}", uuid);
         return FrameworkReturnCode::_ERROR_;
     }
+
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
 
     if (!clientContext->m_init) {
         LOG_ERROR("Pipeline has not been initialized");
@@ -579,6 +613,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     if (!clientContext->m_init) {
         LOG_ERROR("Pipeline has not been initialized");
         return FrameworkReturnCode::_ERROR_;
@@ -620,6 +657,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setRectificat
         LOG_ERROR("Unknown client with UUID: {}", uuid);
         return FrameworkReturnCode::_ERROR_;
     }
+
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
 
     if (!clientContext->m_init) {
         LOG_ERROR("Pipeline has not been initialized");
@@ -665,6 +705,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getCameraPara
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     if (!clientContext->m_cameraOK){
         LOG_ERROR("Camera parameters have not been set");
         return FrameworkReturnCode::_ERROR_;
@@ -702,6 +745,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
         LOG_ERROR("Unknown client with UUID: {}", uuid);
         return FrameworkReturnCode::_ERROR_;
     }
+
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
 
     if (!clientContext->m_init) {
         LOG_ERROR("Pipeline has not been initialized");
@@ -845,6 +891,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::stop(const st
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     if (!clientContext->m_init) {
         LOG_ERROR("Pipeline has not been initialized");
         return FrameworkReturnCode::_ERROR_;
@@ -963,6 +1012,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
         return FrameworkReturnCode::_ERROR_;
     }
 
+    // Restart client activity timer
+    clientContext->m_clientActivityTimer.restart();
+
     if (clientContext->m_started) {
 
         // Check if pose is valid
@@ -1038,6 +1090,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::get3DTransfor
         return FrameworkReturnCode::_ERROR_;
     }
 
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
+
     if (clientContext->m_started) {
 
         // Give 3D transformation matrix if available
@@ -1066,6 +1121,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getLastPose(c
         LOG_ERROR("Unknown client with UUID: {}", uuid);
         return FrameworkReturnCode::_ERROR_;
     }
+
+    LOG_DEBUG("Restart client activity timer");
+    clientContext->m_clientActivityTimer.restart();
 
     if (!clientContext->m_started) {
         LOG_ERROR("Pipeline not started!");
@@ -1203,6 +1261,30 @@ SRef<ClientContext> SolARMappingAndRelocalizationFrontendPipeline::getClientCont
     }
 
     return clientContext;
+}
+
+void SolARMappingAndRelocalizationFrontendPipeline::testClientsActivity()
+{
+    if (m_clientsMap.size() > 0) {
+        for (const auto& [k, v] : m_clientsMap) {
+            if (v->m_started) {
+                if (v->m_clientActivityTimer.elapsed() > (CLIENT_ACTIVITY_DELAY_IF_STARTED * 1000)) {
+                    LOG_INFO("==> no activity for client (in 'started' state): {}", k);
+                    // Stop services dedicated to client
+                    stop(k.c_str());
+                    // Unregister client to unlock services
+                    unregisterClient(k.c_str());
+                }
+            }
+            else {
+                if (v->m_clientActivityTimer.elapsed() > (CLIENT_ACTIVITY_DELAY_IF_STOPPED * 1000)) {
+                    LOG_INFO("==> no activity for client (in 'stopped' state): {}", k);
+                    // Unregister client to unlock services
+                    unregisterClient(k.c_str());
+                }
+            }
+        }
+    }
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()

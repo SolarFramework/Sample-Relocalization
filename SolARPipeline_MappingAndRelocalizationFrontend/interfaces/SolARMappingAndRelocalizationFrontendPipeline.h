@@ -109,6 +109,8 @@ class ClientContext
         std::atomic_bool m_isNeedReloc;
         Timer m_relocTimer;
 
+        Timer m_clientActivityTimer; // Timer used to test if client is still active
+
         // Vector of 3D transformation matrix given by Relocalization service
         std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
 
@@ -310,6 +312,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief Give the context (ClientContext instance) of the given client UUID
     SRef<ClientContext> getClientContext(const std::string & clientUUID) const;
 
+    /// @brief Test the activity of current clients
+    void testClientsActivity();
+
     /// @brief send requests to the relocalization service
     void processRelocalization();
 
@@ -351,6 +356,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // Map update service (common to all clients)
     SRef<api::pipeline::IMapUpdatePipeline>         m_mapupdateService;
+
+    // Delegate task used to test the activity of clients
+    xpcf::DelegateTask * m_clientsActivityTask = nullptr;
 
     // Delegate tasks dedicated to relocalization and mapping processing
     xpcf::DelegateTask * m_relocalizationTask = nullptr;
