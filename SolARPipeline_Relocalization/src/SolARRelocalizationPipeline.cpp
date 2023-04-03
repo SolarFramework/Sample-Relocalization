@@ -265,6 +265,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 
         // keyframes retrieval
         std::vector<uint32_t> retKeyframesId;
+        std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
+        std::vector<uint32_t> inliers;
         if (m_kfRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Number of retrieved keyframes: {}", retKeyframesId.size());
             std::vector<uint32_t> processKeyframesId;
@@ -272,7 +274,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 processKeyframesId.swap(retKeyframesId);
             else
                 processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
-            std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
@@ -295,7 +296,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
             }
             // pnp ransac
-            std::vector<uint32_t> inliers;
             if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
@@ -314,6 +314,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 return FrameworkReturnCode::_SUCCESS;
             }
         }
+        LOG_INFO("Reloc info: {} keypoints, {} 2d-3d correspondences, {} pnp inliers", keypoints.size(), allCorres2D3D.size(), inliers.size());
 		m_nbRelocFails++;
 		if (m_mapUpdatePipeline && (m_nbRelocFails >= THRES_NB_RELOC_FAILS))
 			m_isMap = false;
