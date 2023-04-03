@@ -58,7 +58,8 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
         declareProperty("minCumulativeDistance", m_minCumulativeDistance);
         declareProperty("thresholdRelocConfidence", m_thresRelocConfidence);
-        declareProperty("poseDisparityToleranceInit", m_poseDisparityTolerance);
+        declareProperty("poseDisparityToleranceInit", m_poseDisparityToleranceInit);
+        declareProperty("poseDisparityTolerance", m_poseDisparityTolerance);
 
         LOG_DEBUG("All component injections declared");
 
@@ -1509,9 +1510,20 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
         if (clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
             for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
                 for (int d = 0; d < 3; d++) {
-                    if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
-                        clientContext->m_vector_reloc_transf_matrix.clear();
-                        return false;
+                    if (clientContext->m_mappingStatus == BOOTSTRAP) {
+                        if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityToleranceInit) {
+                            clientContext->m_vector_reloc_transf_matrix.clear();
+                            LOG_INFO("==> Pose not stable");
+                            return false;
+                        }
+                    }
+                    else {
+                        if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
+                            clientContext->m_vector_reloc_transf_matrix.clear();
+                            clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
+                            LOG_INFO("==> Pose not stable");
+                            return false;
+                        }
                     }
                 }
             }
@@ -1533,6 +1545,8 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
             LOG_DEBUG("Pose distance = {} / cumulative distance = {} / min cumulative distance = {} / ratio = {} / cumulative distance*ration = {}",
                      dist.norm(), clientContext->m_cumulativeDistance, m_minCumulativeDistance, m_thresTranslationRatio, clientContext->m_cumulativeDistance*m_thresTranslationRatio);
             if ((clientContext->m_cumulativeDistance > m_minCumulativeDistance) && (dist.norm() > clientContext->m_cumulativeDistance*m_thresTranslationRatio)) {
+                clientContext->m_vector_reloc_transf_matrix.pop_back();
+                clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
                 LOG_INFO("Reject reloc pose because distance is {} on cumulated distance {} ", dist.norm(), clientContext->m_cumulativeDistance);
                 return false;
             }
