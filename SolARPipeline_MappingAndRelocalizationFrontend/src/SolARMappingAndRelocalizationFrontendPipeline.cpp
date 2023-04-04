@@ -995,11 +995,21 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
     if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
         if (m_vector_reloc_transf_matrix.size() >= 2) {
             for (auto i = 1; i<m_vector_reloc_transf_matrix.size(); i++)
-                for (int d = 0; d < 3; d++)
-                    if (std::abs( m_vector_reloc_transf_matrix[0](d, 3) - m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
-                        m_vector_reloc_transf_matrix.clear();
-                        return false;
+                for (int d = 0; d < 3; d++) { 
+                    if (m_mappingStatus == BOOTSTRAP) {
+                        if (std::abs( m_vector_reloc_transf_matrix[0](d, 3) - m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
+                            m_vector_reloc_transf_matrix.clear();
+                            return false;
+                        } 
+                    }
+                    else {
+                        if (std::abs( m_vector_reloc_transf_matrix[0](d, 3) - m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
+                            m_vector_reloc_transf_matrix.clear();
+                            m_T_status = PREVIOUS_3DTRANSFORM;
+                            return false;
+                        } 
                     } 
+                } 
         } 
 
         Transform3Df transform3D = transform3DAverage(m_vector_reloc_transf_matrix);
@@ -1017,6 +1027,8 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(Transform
             LOG_DEBUG("Pose distance = {} / cumulative distance = {} / min cumulative distance = {} / ratio = {} / cumulative distance*ration = {}",
                      dist.norm(), m_cumulativeDistance, m_minCumulativeDistance, m_thresTranslationRatio, m_cumulativeDistance*m_thresTranslationRatio);
             if ((m_cumulativeDistance > m_minCumulativeDistance) && (dist.norm() > m_cumulativeDistance*m_thresTranslationRatio)) {
+                m_vector_reloc_transf_matrix.pop_back();
+                m_T_status = PREVIOUS_3DTRANSFORM;
                 LOG_INFO("Reject reloc pose because distance is {} on cumulated distance {} ", dist.norm(), m_cumulativeDistance);
                 return false;
             }
