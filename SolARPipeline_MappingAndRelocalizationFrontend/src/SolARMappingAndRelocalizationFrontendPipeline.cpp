@@ -57,6 +57,7 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
 		declareProperty("nbRelocRequest", m_nbRelocTransformMatrixRequest);
         declareProperty("thresholdTranslationRatio", m_thresTranslationRatio);
         declareProperty("minCumulativeDistance", m_minCumulativeDistance);
+        declareProperty("minTransformationDistance", m_minTransformationDistance);
         declareProperty("thresholdRelocConfidence", m_thresRelocConfidence);
         declareProperty("poseDisparityToleranceInit", m_poseDisparityToleranceInit);
         declareProperty("poseDisparityTolerance", m_poseDisparityTolerance);
@@ -1041,9 +1042,10 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
             // Relocalization
             if (checkNeedReloc(clientContext)){
-                LOG_DEBUG("Push image and pose for relocalization task");
+                LOG_INFO("==> Push image and pose for relocalization task");
                 m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
-                if (clientContext->m_mappingStatus == BOOTSTRAP)
+                if ((clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING)
+                 && (clientContext->m_mappingStatus == BOOTSTRAP))
                     m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
              }
 
@@ -1307,14 +1309,14 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
     // No image encoding to send to relocalization service
     image->setImageEncoding(Image::ENCODING_NONE);
 
-    LOG_DEBUG("Send image and pose to relocalization service");
+    LOG_INFO("==> Send image and pose to relocalization service");
 
     Transform3Df new_pose;
     float confidence;
 
     try {
         if (clientContext->m_relocalizationService->relocalizeProcessRequest(image, new_pose, confidence) == SolAR::FrameworkReturnCode::_SUCCESS) {
-            LOG_INFO("Relocalization succeeded");
+            LOG_INFO("==> Relocalization succeeded");
             LOG_DEBUG("Client original pose: \n{}", pose.matrix());
             LOG_DEBUG("SolAR new pose: \n{}", new_pose.matrix());
 
@@ -1536,6 +1538,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
             set3DTransformWorld(clientContext, transform3D); // set T_ARr_to_World
             set3DTransformSolAR(clientContext, transform3D);  // set T_ARr_to_SolAR
             clientContext->m_T_M_SolARInit = transform3D;
+            LOG_INFO("m_T_M_SolARInit = {}", clientContext->m_T_M_SolARInit.matrix());
         }
         else { // here we get as input T_ARr_SolAR and we adjust T_ARr_World
             Vector3f dist(clientContext->m_T_M_SolARInit(0, 3)-transform3D(0, 3),
@@ -1544,10 +1547,12 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
             LOG_INFO("Distance between new and init T is {} on cumu. dist. {}", dist.norm(), clientContext->m_cumulativeDistance);
             LOG_DEBUG("Pose distance = {} / cumulative distance = {} / min cumulative distance = {} / ratio = {} / cumulative distance*ration = {}",
                      dist.norm(), clientContext->m_cumulativeDistance, m_minCumulativeDistance, m_thresTranslationRatio, clientContext->m_cumulativeDistance*m_thresTranslationRatio);
-            if ((clientContext->m_cumulativeDistance > m_minCumulativeDistance) && (dist.norm() > clientContext->m_cumulativeDistance*m_thresTranslationRatio)) {
+            if ((clientContext->m_cumulativeDistance > m_minCumulativeDistance)
+             && (dist.norm() > m_minTransformationDistance)
+             && (dist.norm() > clientContext->m_cumulativeDistance*m_thresTranslationRatio)) {
                 clientContext->m_vector_reloc_transf_matrix.pop_back();
                 clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
-                LOG_INFO("Reject reloc pose because distance is {} on cumulated distance {} ", dist.norm(), clientContext->m_cumulativeDistance);
+                LOG_INFO("==> Reject reloc pose because distance is {} on cumulated distance {} ", dist.norm(), clientContext->m_cumulativeDistance);
                 return false;
             }
 
@@ -1562,6 +1567,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
         clientContext->m_relocTimer.restart();
         clientContext->m_isNeedReloc = false;
         clientContext->m_vector_reloc_transf_matrix.clear();
+        LOG_INFO("==> New reloc sent to client");
         return true;
 	}
     else
