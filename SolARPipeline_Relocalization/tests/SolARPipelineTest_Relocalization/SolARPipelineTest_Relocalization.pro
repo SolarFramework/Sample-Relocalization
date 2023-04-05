@@ -71,6 +71,7 @@ DISTFILES += \
 
 config_files.path = $${TARGETDEPLOYDIR}
 config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml) \
+                    $$files($${PWD}/SolARPipelineTest_Relocalization_Cuda_conf.xml) \
                     $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
 
@@ -89,7 +90,8 @@ linux {
 
 OTHER_FILES += \
     packagedependencies.txt \
-    SolARPipelineTest_Relocalization_conf.xml
+    SolARPipelineTest_Relocalization_conf.xml \
+    SolARPipelineTest_Relocalization_Cuda_conf.xml
 
 #NOTE : Must be placed at the end of the .pro
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows
