@@ -154,6 +154,7 @@
             <property name="thresholdTranslationRatio" access="rw" type="float" value="0.1" description="ratio multiplied with cumulative distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minCumulativeDistance" access="rw" type="float" value="0.05" description="minimum cumulative distance to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minTransformationDistance" access="rw" type="float" value="0.05" description="minimum distance between new and initial transformation to test if reloc pose is coherent with AR runtime pose"/>
+            <property name="minDiffTranslationDistance" access="rw" type="float" value="0.005" description="minimum distance between previous and last poses to take this translation into account"/>
             <property name="poseDisparityToleranceInit" access="rw" type="float" value="0.05" description="tolerance in translation disparity when initializing the tranform from ar device to solar"/>
             <property name="poseDisparityTolerance" access="rw" type="float" value="0.15" description="tolerance in translation disparity when calculating the current tranform from ar device to solar"/>
             <property name="thresholdRelocConfidence" access="rw" type="float" value="0.0" description="threshold on reloc confidence score to check if a reloc pose is reliable to initialize transform from AR runtime to SolAR"/>
