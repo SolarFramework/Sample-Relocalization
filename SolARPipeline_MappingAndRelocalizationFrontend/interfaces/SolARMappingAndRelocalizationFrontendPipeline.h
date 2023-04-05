@@ -242,7 +242,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
     // 3D transformation matrix from client to SolAR coordinates system
     SolAR::datastructure::Transform3Df  m_T_M_World;  // transform from Device (AR runtime) to World 
-    SolAR::datastructure::Transform3Df  m_T_M_SolAR;  // transform from Device (AR runtime) to SolAR 
+    SolAR::datastructure::Transform3Df  m_T_M_SolAR;  // transform from Device (AR runtime) to SolAR
+    SolAR::datastructure::Transform3Df  m_T_M_SolARInit;  // transform from device (AR runtime) to SolAR (init)
     std::mutex                          m_mutexTransformWorld;
     std::mutex                          m_mutexTransformSolAR;
     std::atomic<TransformStatus>        m_T_status;  // status of 3D transform 
