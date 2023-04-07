@@ -1516,14 +1516,21 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
 {
     unique_lock<mutex> lock(clientContext->m_mutexFindTransform);
     clientContext->m_vector_reloc_transf_matrix.push_back(transform);
-	// find mean transformation
-    if (clientContext->m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-        if ((clientContext->m_mappingStatus == BOOTSTRAP)
-         && (clientContext->m_vector_reloc_transf_matrix.size() >= 2)) {
-            for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
-                for (int d = 0; d < 3; d++) {
+    // find mean transformation
+    if (clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
+        for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
+            for (int d = 0; d < 3; d++) {
+                if (clientContext->m_mappingStatus == BOOTSTRAP) {
                     if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityToleranceInit) {
                         clientContext->m_vector_reloc_transf_matrix.clear();
+                        LOG_INFO("Pose not stable");
+                        return false;
+                    }
+                }
+                else {
+                    if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
+                        clientContext->m_vector_reloc_transf_matrix.pop_back();
+                        clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
                         LOG_INFO("Pose not stable");
                         return false;
                     }
