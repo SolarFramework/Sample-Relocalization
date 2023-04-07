@@ -111,6 +111,7 @@ class ClientContext
         Timer m_relocTimer;
 
         Timer m_clientActivityTimer; // Timer used to test if client is still active
+        Timer m_clientRelocDelay;    // Timer used to check the delay between 2 relocalization requests
 
         // Vector of 3D transformation matrix given by Relocalization service
         std::vector<SolAR::datastructure::Transform3Df> m_vector_reloc_transf_matrix;
@@ -395,7 +396,8 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     float m_thresRelocConfidence = 0.f;         // threshold on confidence score to tell if reloc is good enough to initialize the transform from ARr to SolAR
     float m_poseDisparityToleranceInit = 0.05f; // when initializing the first transform device to solar, the list of reloc transforms must be close to each other in translation
     float m_poseDisparityTolerance = 0.15f;     // when calculating current transform device to solar, the list of reloc transforms must be close to each other in translation
-
+    int m_clientActivityDelay = 120;            // delay used to test if a client is still active (in seconds)
+    int m_minRelocalizationDelay = 500;         // minimum delay between 2 relocalization requests for a client (in milliseconds)
 };
 
 } // namespace RELOCALIZATION

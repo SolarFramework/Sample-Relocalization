@@ -40,9 +40,6 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
-#define CLIENT_ACTIVITY_DELAY_IF_STOPPED 300 // Delay used to test if a client is still active in "stopped" state (in seconds)
-#define CLIENT_ACTIVITY_DELAY_IF_STARTED 10 // Delay used to test if a client is still active in "started" state (in seconds)
-
 // Public methods
 
 SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFrontendPipeline():ConfigurableBase(xpcf::toUUID<SolARMappingAndRelocalizationFrontendPipeline>())
@@ -62,6 +59,8 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
         declareProperty("thresholdRelocConfidence", m_thresRelocConfidence);
         declareProperty("poseDisparityToleranceInit", m_poseDisparityToleranceInit);
         declareProperty("poseDisparityTolerance", m_poseDisparityTolerance);
+        declareProperty("clientActivityDelay", m_clientActivityDelay);
+        declareProperty("minRelocalizationDelay", m_minRelocalizationDelay);
 
         LOG_DEBUG("All component injections declared");
 
@@ -865,6 +864,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
             }
         }
 
+        LOG_DEBUG("Start relocalization delay timer");
+        clientContext->m_clientRelocDelay.restart();
+
         clientContext->m_started = true;
     }
     else {
@@ -1014,6 +1016,27 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
     if (clientContext->m_started) {
 
+        // Give 3D transformation matrix if available
+        transform3DStatus = clientContext->m_T_status;
+        transform3D = get3DTransformWorld(clientContext);
+        confidence = clientContext->m_confidence;
+        mappingStatus = clientContext->m_mappingStatus;
+
+        // If relocalization mode: test delay since last processed request
+        if (clientContext->m_PipelineMode == RELOCALIZATION_ONLY) {
+            if (clientContext->m_clientRelocDelay.elapsed() < m_minRelocalizationDelay) {
+                LOG_DEBUG("Delay between last relocalization request too short: request not processed");
+                if (clientContext->m_T_status == NEW_3DTRANSFORM) {
+                    transform3DStatus = PREVIOUS_3DTRANSFORM;
+                }
+                return FrameworkReturnCode::_SUCCESS;
+            }
+            else {
+                LOG_DEBUG("Delay between last relocalization request valid: request will be processed");
+                clientContext->m_clientRelocDelay.restart();
+            }
+        }
+
         // Check if pose is valid
         if (!poses[0].matrix().isZero()) {
 
@@ -1035,12 +1058,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
 
             // Store last pose received
             setLastPose(clientContext, poses[0]);
-
-            // Give 3D transformation matrix if available
-            transform3DStatus = clientContext->m_T_status;
-            transform3D = get3DTransformWorld(clientContext);
-            confidence = clientContext->m_confidence;
-            mappingStatus = clientContext->m_mappingStatus;
 
             // Relocalization
             if (checkNeedReloc(clientContext)){
@@ -1262,25 +1279,15 @@ void SolARMappingAndRelocalizationFrontendPipeline::testClientsActivity()
 
     if (m_clientsMap.size() > 0) {
         for (const auto& [k, v] : m_clientsMap) {
-            if ((v != nullptr) && (v->m_started)) {
-                if ((v != nullptr) && (v->m_clientActivityTimer.elapsed() > (CLIENT_ACTIVITY_DELAY_IF_STARTED * 1000))) {
-                    LOG_INFO("No activity for client (in 'started' state): {}", k);
-                    lock.unlock();
-                    // Stop services dedicated to client
+            if ((v != nullptr) && (v->m_clientActivityTimer.elapsed() > (m_clientActivityDelay * 1000))) {
+                LOG_INFO("No activity for client: {}", k);
+                lock.unlock();
+                // Stop services dedicated to client
+                if (v->m_started)
                     stop(k.c_str());
-                    // Unregister client to unlock services
-                    unregisterClient(k.c_str());
-                    lock.lock();
-                }
-            }
-            else {
-                if ((v != nullptr) && (v->m_clientActivityTimer.elapsed() > (CLIENT_ACTIVITY_DELAY_IF_STOPPED * 1000))) {
-                    LOG_INFO("No activity for client (in 'stopped' state): {}", k);
-                    // Unregister client to unlock services
-                    lock.unlock();
-                    unregisterClient(k.c_str());
-                    lock.lock();
-                }
+                // Unregister client to unlock services
+                unregisterClient(k.c_str());
+                lock.lock();
             }
         }
     }
@@ -1511,23 +1518,14 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
     clientContext->m_vector_reloc_transf_matrix.push_back(transform);
 	// find mean transformation
     if (clientContext->m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {
-        if (clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
+        if ((clientContext->m_mappingStatus == BOOTSTRAP)
+         && (clientContext->m_vector_reloc_transf_matrix.size() >= 2)) {
             for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
                 for (int d = 0; d < 3; d++) {
-                    if (clientContext->m_mappingStatus == BOOTSTRAP) {
-                        if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityToleranceInit) {
-                            clientContext->m_vector_reloc_transf_matrix.clear();
-                            LOG_INFO("Pose not stable");
-                            return false;
-                        }
-                    }
-                    else {
-                        if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
-                            clientContext->m_vector_reloc_transf_matrix.clear();
-                            clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
-                            LOG_INFO("Pose not stable");
-                            return false;
-                        }
+                    if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityToleranceInit) {
+                        clientContext->m_vector_reloc_transf_matrix.clear();
+                        LOG_INFO("Pose not stable");
+                        return false;
                     }
                 }
             }
@@ -1569,7 +1567,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
         clientContext->m_T_status = NEW_3DTRANSFORM;
         clientContext->m_relocTimer.restart();
         clientContext->m_isNeedReloc = false;
-        clientContext->m_vector_reloc_transf_matrix.clear();
+        clientContext->m_vector_reloc_transf_matrix.erase(clientContext->m_vector_reloc_transf_matrix.begin());
         LOG_INFO("New reloc sent to client");
         return true;
 	}

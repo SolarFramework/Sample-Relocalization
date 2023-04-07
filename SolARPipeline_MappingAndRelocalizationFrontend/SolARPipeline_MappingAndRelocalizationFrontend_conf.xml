@@ -158,7 +158,9 @@
             <property name="poseDisparityToleranceInit" access="rw" type="float" value="0.05" description="tolerance in translation disparity when initializing the tranform from ar device to solar"/>
             <property name="poseDisparityTolerance" access="rw" type="float" value="0.15" description="tolerance in translation disparity when calculating the current tranform from ar device to solar"/>
             <property name="thresholdRelocConfidence" access="rw" type="float" value="0.0" description="threshold on reloc confidence score to check if a reloc pose is reliable to initialize transform from AR runtime to SolAR"/>
-          </configure>
+            <property name="clientActivityDelay" access="rw" type="uint" value="120" description="delay used to test if a client is still active (in seconds)"/>
+            <property name="minRelocalizationDelay" access="rw" type="uint" value="500" description="minimum delay between 2 relocalization requests for a client (in milliseconds)"/>
+        </configure>
 
         <configure component="SolARFiducialMarkerPoseEstimator">
             <property name="nbThreshold" type="int" value="8"/>
