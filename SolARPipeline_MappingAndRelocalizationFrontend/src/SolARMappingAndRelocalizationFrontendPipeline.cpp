@@ -328,10 +328,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getAllClients
     unique_lock<mutex> lock(m_mutexClientMap);
 
     try {
-        if (m_clientsMap.size() > 0) {
-            for (const auto& [k, v] : m_clientsMap) {
-                uuidList.insert(uuidList.begin(),k);
-            }
+        for (const auto& [k, v] : m_clientsMap) {
+            uuidList.insert(uuidList.begin(),k);
         }
         return FrameworkReturnCode::_SUCCESS;
     }
