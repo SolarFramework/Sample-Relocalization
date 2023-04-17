@@ -326,14 +326,19 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getAllClientsUUID(std::vector<std::string> & uuidList) const
 {
     unique_lock<mutex> lock(m_mutexClientMap);
-    if (m_clientsMap.size() > 0) {
-        for (const auto& [k, v] : m_clientsMap) {
-            uuidList.insert(uuidList.begin(),k);
+
+    try {
+        if (m_clientsMap.size() > 0) {
+            for (const auto& [k, v] : m_clientsMap) {
+                uuidList.insert(uuidList.begin(),k);
+            }
         }
         return FrameworkReturnCode::_SUCCESS;
     }
-    else
+    catch (const exception &e) {
+        LOG_ERROR("The following exception has been caught {}", e.what());
         return FrameworkReturnCode::_ERROR_;
+    }
 }
 
 FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const string & uuid)
@@ -1517,7 +1522,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
     unique_lock<mutex> lock(clientContext->m_mutexFindTransform);
     clientContext->m_vector_reloc_transf_matrix.push_back(transform);
     // find mean transformation
-    if (clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
+    if (clientContext->m_vector_reloc_transf_matrix.size() > 2) {
         for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
             for (int d = 0; d < 3; d++) {
                 if (clientContext->m_mappingStatus == BOOTSTRAP) {
@@ -1527,6 +1532,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
                         return false;
                     }
                 }
+/*
                 else {
                     if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityTolerance) {
                         clientContext->m_vector_reloc_transf_matrix.pop_back();
@@ -1535,6 +1541,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
                         return false;
                     }
                 }
+*/
             }
         }
 
