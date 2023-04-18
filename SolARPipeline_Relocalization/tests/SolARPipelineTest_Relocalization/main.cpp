@@ -31,6 +31,9 @@ using namespace SolAR;
 using namespace SolAR::api;
 using namespace datastructure;
 
+// camera idx
+#define INDEX_USE_CAMERA 0
+
 // Nb images between 2 pipeline requests
 #define NB_IMAGES_BETWEEN_REQUESTS 10
 
@@ -56,10 +59,7 @@ int main(int argc, char *argv[]){
             return -1;
         }
         auto gRelocalizationPipeline = componentMgr->resolve<pipeline::IRelocalizationPipeline>();
-		auto gCamera = componentMgr->resolve<input::devices::ICamera>();
         auto gArDevice = componentMgr->resolve<input::devices::IARDevice>();
-        CameraRigParameters camRigParams = gArDevice->getCameraParameters();
-        CameraParameters camParams = camRigParams.cameraParams[0];
 		auto gImageViewer = componentMgr->resolve<display::IImageViewer>();
 		auto gViewer3D = componentMgr->resolve<display::I3DPointsViewer>();
 		auto gPointCloudManager = componentMgr->resolve<storage::IPointCloudManager>();
@@ -70,11 +70,13 @@ int main(int argc, char *argv[]){
 			return -1;
 		}
 		// start camera
-		if (gCamera->start() != FrameworkReturnCode::_SUCCESS) {
-			LOG_ERROR("Cannot start camera");
-			return -1;
-		}
-		gRelocalizationPipeline->setCameraParameters(camParams);
+        if (gArDevice->start() != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Cannot start AR device");
+            return -1;
+        }
+        CameraRigParameters camRigParams = gArDevice->getCameraParameters();
+        CameraParameters camParams = camRigParams.cameraParams[INDEX_USE_CAMERA];
+        gRelocalizationPipeline->setCameraParameters(camParams);
         // start pipeline
 		if (gRelocalizationPipeline->start() != FrameworkReturnCode::_SUCCESS) {
 			LOG_ERROR("Cannot start relocalization pipeline");
@@ -101,27 +103,34 @@ int main(int argc, char *argv[]){
 
 		// relocalize
         unsigned int nb_images = NB_IMAGES_BETWEEN_REQUESTS;
-		SRef<Image> image;
-		std::vector<Transform3Df> framePoses;
-        while (gCamera->getNextImage(image) == FrameworkReturnCode::_SUCCESS) {	
-			if (nb_images != NB_IMAGES_BETWEEN_REQUESTS) {
-				nb_images++;
-				continue;
-			}				
-			else
-				nb_images = 0;            			
-			float_t confidence = 0;
-			Transform3Df pose;
-            if (gRelocalizationPipeline->relocalizeProcessRequest(image, pose, confidence) == FrameworkReturnCode::_SUCCESS) {
-                LOG_DEBUG("Relocalization succeeds");
-                framePoses.push_back(pose);
+        std::vector<Transform3Df> framePoses;
+        std::vector<SRef<Image>> images;
+        std::vector<Transform3Df> poses;
+        std::chrono::system_clock::time_point timestamp;
+        while (gArDevice->getData(images, poses, timestamp) == FrameworkReturnCode::_SUCCESS) {
+            if (nb_images != NB_IMAGES_BETWEEN_REQUESTS) {
+                nb_images++;
+                images.resize(0);
+                poses.resize(0);
+                continue;
             }
             else
-				LOG_DEBUG("Relocalization fails");
-            if (gImageViewer->display(image) == SolAR::FrameworkReturnCode::_STOP) break;
+                nb_images = 0;
+            float_t confidence = 0;
+            SRef<Image> image = images[INDEX_USE_CAMERA];
+            Transform3Df pose = poses[INDEX_USE_CAMERA];
+            Transform3Df poseReloc;
+            SRef<Image> displayImage = image->copy();
+            if (gRelocalizationPipeline->relocalizeProcessRequest(image, poseReloc, confidence) == FrameworkReturnCode::_SUCCESS) {
+                LOG_DEBUG("Relocalization succeeds");
+                framePoses.push_back(poseReloc);
+            }
+            else
+                LOG_DEBUG("Relocalization fails");
+            if (gImageViewer->display(displayImage) == SolAR::FrameworkReturnCode::_STOP) break;
             fnDisplay(framePoses);
-        }         
-		// display all relocalization camera poses
+        }
+        // display all relocalization camera poses
 		while (true) {
             if (!fnDisplay(framePoses))
 				break;
