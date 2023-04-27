@@ -16,6 +16,7 @@
 #include "core/Log.h"
 #include "boost/log/core/core.hpp"
 #include <cmath>
+#include <unordered_map>
 
 namespace xpcf  = org::bcom::xpcf;
 
@@ -24,7 +25,7 @@ namespace SolAR {
 namespace PIPELINES {
 namespace RELOCALIZATION {
 
-#define NB_PROCESS_KEYFRAMES 10
+#define NB_PROCESS_KEYFRAMES 5
 #define THRES_NB_RELOC_FAILS 5
 
 // Public methods
@@ -272,20 +273,50 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             else
                 processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
             std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
+            std::map<uint32_t, std::vector<uint32_t>> mapKeypointCloudPts;
+            std::map<uint32_t, std::vector<std::pair<uint32_t, uint32_t>>> mapKeypointKpts; // pair of keyframe ID & keypoint id 
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
                 std::vector<std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
-                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
+                std::vector<DescriptorMatch> matchesKf2Frame;
+                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D, matchesKf2Frame);
                 if (isFound) {
-                    for (const auto &corr : corres2D3D) {
-                        uint32_t idKp = corr.first;
-                        if (allCorres2D3D.find(idKp) == allCorres2D3D.end())
-                            allCorres2D3D[idKp] = corr.second;
+                    for (const auto &corr : corres2D3D)
+                        mapKeypointCloudPts[corr.first].push_back(corr.second->getId());
+                    for (const auto& match : matchesKf2Frame) 
+                        mapKeypointKpts[match.getIndexInDescriptorB()].push_back({ it, match.getIndexInDescriptorA() });
+                }
+            }
+
+            // generate global 2D/3D correspondences 
+            SRef<SolAR::datastructure::Map> map;
+            m_mapManager->getMap(map);
+            for (const auto& item : mapKeypointCloudPts) {
+                // each keypoint could be mapped to several cloud points 
+                std::unordered_map<uint32_t, int> frequencyMap;
+                for (const auto& cloudPtId : item.second)
+                    frequencyMap[cloudPtId]++;
+                // find the cloud point with the biggest frequency value 
+                uint32_t maxFreqPtId = 0;
+                int maxFreq = 0;
+                for (const auto& element : frequencyMap) {
+                    if (element.second > maxFreq) {
+                        maxFreqPtId = element.first;
+                        maxFreq = element.second;
                     }
+                }
+                // if seen by the same cloud pt more than twice, add to global 2D/3D correspondences list 
+                // if seen by one cloud point but kpt matched to more than 2 keyframes, add to global 2D/3D correspondences list  
+                if ( (maxFreq >= 2) || 
+                     (maxFreq == 1 && mapKeypointKpts[item.first].size() >= 2) ) {
+                    SRef<CloudPoint> point;
+                    map->getConstPointCloud()->getPoint(maxFreqPtId, point);
+                    allCorres2D3D[item.first] = point;
                 }
             }
             LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
+
             std::vector<Point2Df> pts2D;
             std::vector<Point3Df> pts3D;
             const std::vector<Keypoint>& keypoints = frame->getKeypoints();
@@ -297,6 +328,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             std::vector<uint32_t> inliers;
             if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
+
                 frame->setPose(pose);
 				m_isMap = true;
 				m_nbRelocFails = 0;
@@ -343,7 +375,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::getMapRequest(SRef<SolAR::datas
 
 // Private methods
 
-bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D)
+bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D, std::vector<DescriptorMatch>& matchesKfToFrame)
 {
 	// feature matching to reference keyframe			
 	std::vector<DescriptorMatch> matches;
@@ -367,6 +399,8 @@ bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &f
         // RANSAC based filtering, could have random behaviors in some cases
         m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
     }
+    // output keypoint matches 
+    matchesKfToFrame = matches;
 	// find 2D-3D point correspondences
 	if (matches.size() < m_minNbInliers)
 		return false;

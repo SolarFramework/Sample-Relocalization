@@ -134,7 +134,7 @@ public:
 private:
 
     // 2D-3D correspondences finder function
-	bool fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D);
+	bool fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D, std::vector<DescriptorMatch>& matchesKfToFrame);
 
 private:
 
