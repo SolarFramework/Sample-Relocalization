@@ -80,6 +80,14 @@
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="a345a1d2-c3f3-497f-948b-cd1a199e6657" name="IUndistortPoints" description="IUndistortPoints"/>
 		</component>
+		 <component uuid="fb9dac20-2a44-44b2-aa42-2871eec31427" name="SolARHomographyEstimationOpencv" description="SolARHomographyEstimationOpencv">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="45dd370a-0eab-4a7f-93d0-43453b4c7517" name="I2DTransformFinder" description="I2DTransformFinder"/>
+		</component>
+		<component uuid="a12a8706-299b-4981-b12b-60717ef3b160" name="SolARDescriptorMatcherRegionOpencv" description="SolARDescriptorMatcherRegionOpencv">
+			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+			<interface uuid="bdef063d-96de-4425-83c5-fec7b7e448c8" name="IDescriptorMatcherRegion" description="IDescriptorMatcherRegion"/>
+		</component>
 	</module>
 	
 	<module uuid="6e960df6-9a36-11e8-9eb6-529269fb1459" name="SolARModuleOpenGL" description="SolARModuleOpenGL" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenGL/1.0.0/lib/x86_64/shared">
@@ -192,7 +200,7 @@
 		</configure>
 		<configure component="SolARGeometricMatchesFilterOpencv">
 			<property name="confidence" type="float" value="0.99"/>
-			<property name="outlierDistanceRatio" type="float" value="0.015"/>
+			<property name="outlierDistanceRatio" type="float" value="0.01"/>
 			<property name="epilinesDistance" type="float" value="8.0"/>
 		</configure>
 		<configure component="SolARPoseEstimationSACPnpOpencv">
@@ -221,6 +229,14 @@
 			<property name="distanceMetricId" type="int" value="0" description="0:L2; 1:L1; 2:ChiSquare; 3:BHATTACHARYYA; 4:DotProduct; 5:KLS"/>
 			<property name="matchingDistanceRatio" type="float" value="0.8"/>
 			<property name="matchingDistanceMax" type="float" value="500"/>
+		</configure>
+		<configure component="SolARHomographyEstimationOpencv">
+			<property name="ransacReprojThreshold" type="double" value="8.0"/>
+		</configure>
+		<configure component="SolARDescriptorMatcherRegionOpencv">
+			<property name="distanceRatio" type="float" value="0.8"/>
+			<property name="radius" type="float" value="30"/>
+			<property name="matchingDistanceMax" type="float" value="400"/>
 		</configure>
 		<configure component="SolARImageViewerOpencv">
 			<property name="title" type="string" value="Image Relocalization (press esc to exit)"/>

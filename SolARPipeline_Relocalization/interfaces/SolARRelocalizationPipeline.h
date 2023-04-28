@@ -40,13 +40,16 @@
 #include "api/display/IImageViewer.h"
 #include "api/features/IDescriptorsExtractorFromImage.h"
 #include "api/features/IDescriptorMatcher.h"
+#include "api/features/IDescriptorMatcherRegion.h"
 #include "api/features/IMatchesFilter.h"
 #include "api/solver/pose/I3DTransformSACFinderFrom2D3D.h"
 #include "api/storage/IMapManager.h"
 #include "api/storage/ICameraParametersManager.h"
 #include "api/solver/pose/I2D3DCorrespondencesFinder.h"
+#include "api/solver/pose/I2DTransformFinder.h"
 #include "api/image/IImageConvertor.h"
 #include "api/geom/IUndistortPoints.h"
+#include "api/geom/IProject.h"
 #include "api/pipeline/IMapUpdatePipeline.h"
 
 using namespace SolAR;
@@ -157,10 +160,13 @@ private:
     SRef<pipeline::IMapUpdatePipeline>                      m_mapUpdatePipeline;
     SRef<features::IDescriptorsExtractorFromImage>          m_descriptorExtractor;
     SRef<features::IDescriptorMatcher>                      m_matcher;
+    SRef<features::IDescriptorMatcherRegion>                m_matcherRegion;
     SRef<solver::pose::I2D3DCorrespondencesFinder>          m_corr2D3DFinder;
     SRef<api::solver::pose::I3DTransformSACFinderFrom2D3D>  m_pnpRansac;
+    SRef<api::solver::pose::I2DTransformFinder>             m_findHomography;
     SRef<features::IMatchesFilter>                          m_matchesFilter;
     SRef<geom::IUndistortPoints>							m_undistortKeypoints;
+    SRef<geom::IProject>                                    m_projector;
     SRef<api::storage::ICameraParametersManager>            m_cameraParametersManager;
 };
 
