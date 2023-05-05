@@ -43,11 +43,13 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInjectable<api::solver::pose::I3DTransformSACFinderFrom2D3D>(m_pnpRansac);
         declareInjectable<api::features::IMatchesFilter>(m_matchesFilter);
 		declareInjectable<api::geom::IUndistortPoints>(m_undistortKeypoints);
+        declareInjectable<api::storage::ICameraParametersManager>(m_cameraParametersManager);
 
         LOG_DEBUG("All component injections declared");
 
         LOG_DEBUG("Initialize instance attributes");
         m_minNbInliers = 0;
+        m_confidenceSigma = 0.f;
     }
     catch (xpcf::Exception & e) {
         LOG_ERROR("The following exception has been caught {}", e.what());
@@ -73,6 +75,8 @@ SolARRelocalizationPipeline::~SolARRelocalizationPipeline()
 FrameworkReturnCode SolARRelocalizationPipeline::init()
 {
     LOG_DEBUG("SolARRelocalizationPipeline::init");
+
+    m_confidenceSigma = 2.f * static_cast<float>(m_minNbInliers);
 
     if (m_started)
         stop();
@@ -224,11 +228,13 @@ FrameworkReturnCode SolARRelocalizationPipeline::stop()
 
 FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
                                                                           SolAR::datastructure::Transform3Df& pose,
-                                                                          float_t & confidence)
+                                                                          float_t & confidence, const Transform3Df& poseCoarse)
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
 
     confidence = 0;
+
+    confidence = 0.f;
 
     if (m_started) {
 
@@ -239,7 +245,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
 			return FrameworkReturnCode::_ERROR_;
         m_undistortKeypoints->undistort(keypoints, m_camParams, undistortedKeypoints);
-        SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, m_camParamsID, Transform3Df::Identity());
+        SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, m_camParamsID, poseCoarse);
 
 		if (m_mapUpdatePipeline && !m_isMap) {
 			SRef<Map> subMap;
@@ -258,19 +264,20 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
         }
 
         // keyframes retrieval
-        std::vector <uint32_t> retKeyframesId;
+        std::vector<uint32_t> retKeyframesId;
+        std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
+        std::vector<uint32_t> inliers;
         if (m_kfRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Number of retrieved keyframes: {}", retKeyframesId.size());
-            std::vector <uint32_t> processKeyframesId;
+            std::vector<uint32_t> processKeyframesId;
             if (retKeyframesId.size() <= NB_PROCESS_KEYFRAMES)
                 processKeyframesId.swap(retKeyframesId);
             else
                 processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
-            std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
-                std::vector < std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
+                std::vector<std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
                 bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
                 if (isFound) {
                     for (const auto &corr : corres2D3D) {
@@ -289,16 +296,25 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
             }
             // pnp ransac
-            std::vector<uint32_t> inliers;
             if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
 				m_isMap = true;
 				m_nbRelocFails = 0;
+                // compute confidence score from number of inliers
+                if (inliers.size() <= m_minNbInliers)
+                    confidence = 0.f;
+                else {
+                    // when nb inliers = 2*sigma + m_minNbInliers, confidence is close to 1
+                    confidence = 1.f - std::exp(- (static_cast<float>(inliers.size()) - static_cast<float>(m_minNbInliers)) * (static_cast<float>(inliers.size()) - static_cast<float>(m_minNbInliers))
+                        / (2. * m_confidenceSigma * m_confidenceSigma));
+                    LOG_DEBUG("Confidence score = {}", confidence);
+                }
                 LOG_DEBUG("Got the new pose: relocalization successful");
                 return FrameworkReturnCode::_SUCCESS;
             }
         }
+        LOG_INFO("Reloc info: {} keypoints, {} 2d-3d correspondences, {} pnp inliers", keypoints.size(), allCorres2D3D.size(), inliers.size());
 		m_nbRelocFails++;
 		if (m_mapUpdatePipeline && (m_nbRelocFails >= THRES_NB_RELOC_FAILS))
 			m_isMap = false;
@@ -334,7 +350,25 @@ bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &f
 	// feature matching to reference keyframe			
 	std::vector<DescriptorMatch> matches;
 	m_matcher->match(candidateKf->getDescriptors(), frame->getDescriptors(), matches);
-	m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
+    if (!frame->getPose().isApprox(Transform3Df::Identity()) && !candidateKf->getPose().isApprox(Transform3Df::Identity())) {
+        // if both frame and candidateKf have valid pose (coarse pose needing to be refined), we can compute fundamental matrix and perform safer filtering
+        // get camera parameters
+        SRef<CameraParameters> camParamsFrame, camParamsKeyframe;
+        if (m_cameraParametersManager->getCameraParameters(frame->getCameraID(), camParamsFrame) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Camera parameters with id {} does not exists in the camera parameters manager", frame->getCameraID());
+            return false;
+        }
+        if (m_cameraParametersManager->getCameraParameters(candidateKf->getCameraID(), camParamsKeyframe) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Camera parameters with id {} does not exists in the camera parameters manager", candidateKf->getCameraID());
+            return false;
+        }
+        m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints(),
+            candidateKf->getPose(), frame->getPose(), camParamsKeyframe->intrinsic, camParamsFrame->intrinsic);
+    }
+    else {
+        // RANSAC based filtering, could have random behaviors in some cases
+        m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
+    }
 	// find 2D-3D point correspondences
 	if (matches.size() < m_minNbInliers)
 		return false;

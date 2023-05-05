@@ -159,7 +159,7 @@ FrameworkReturnCode SolARRelocalizationMarkerPipeline::stop()
 
 FrameworkReturnCode SolARRelocalizationMarkerPipeline::relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
                                                                                 SolAR::datastructure::Transform3Df& pose,
-                                                                                float_t & confidence)
+                                                                                float_t & confidence, const Transform3Df& poseCoarse)
 {
     LOG_DEBUG("SolARRelocalizationMarkerPipeline::relocalizeProcessRequest");
     confidence = 1.f;

@@ -104,10 +104,11 @@ public:
     /// @param[in] image: the image to process
     /// @param[out] pose: the new calculated pose
     /// @param[out] confidence: the confidence score
+    /// @param[in] poseCoarse: (optional) coarse pose which needs to be refined by reloc, by default, poseCoarse equals identity matrix meaning that no coarse pose is provided
     /// @return FrameworkReturnCode::_SUCCESS if the processing is successful, else FrameworkReturnCode::_ERROR_
     FrameworkReturnCode relocalizeProcessRequest(const SRef<SolAR::datastructure::Image> image,
                                                  SolAR::datastructure::Transform3Df& pose,
-                                                 float_t & confidence) override;
+                                                 float_t & confidence, const Transform3Df& poseCoarse = Transform3Df::Identity()) override;
 
     /// @brief Request to the relocalization pipeline to get the map
     /// @param[out] map the output map
