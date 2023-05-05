@@ -28,8 +28,6 @@ namespace RELOCALIZATION {
 
 #define NB_PROCESS_KEYFRAMES 5
 #define THRES_NB_RELOC_FAILS 5
-// extend list of 2D/3D correspondences from local map's unmatched 3D cloud points 
-#define REGION_MATCH_FROM_LOCAL_MAP
 
 // Public methods
 
@@ -43,11 +41,8 @@ SolARRelocalizationPipeline::SolARRelocalizationPipeline():ConfigurableBase(xpcf
         declareInjectable<api::reloc::IKeyframeRetriever>(m_kfRetriever);
         declareInjectable<api::features::IDescriptorsExtractorFromImage>(m_descriptorExtractor);
         declareInjectable<api::features::IDescriptorMatcher>(m_matcher);
-        declareInjectable<api::features::IDescriptorMatcherRegion>(m_matcherRegion);
         declareInjectable<api::solver::pose::I2D3DCorrespondencesFinder>(m_corr2D3DFinder);
         declareInjectable<api::solver::pose::I3DTransformSACFinderFrom2D3D>(m_pnpRansac);
-        declareInjectable<api::solver::pose::I2DTransformFinder>(m_findHomography);
-        declareInjectable<api::geom::IProject>(m_projector);
         declareInjectable<api::features::IMatchesFilter>(m_matchesFilter);
 		declareInjectable<api::geom::IUndistortPoints>(m_undistortKeypoints);
         declareInjectable<api::storage::ICameraParametersManager>(m_cameraParametersManager);
@@ -280,13 +275,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
             std::map<uint32_t, SRef<CloudPoint>> allCorres2D3D;
             std::map<uint32_t, std::vector<uint32_t>> mapKeypointCloudPts;
-#ifdef REGION_MATCH_FROM_LOCAL_MAP
-            Transform2Df maxKfHomography;
-            uint32_t maxKfId = 0;
-            std::vector<DescriptorMatch> maxMatchesKf2Frame;
-            std::unordered_map<uint32_t, bool> cloudPtIn;  // if cloud point is included in 2D/3D correspondences list 
-            float maxMatchingScore = 0.f;
-#endif
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
@@ -297,17 +285,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                     for (const auto &corr : corres2D3D)
                         mapKeypointCloudPts[corr.first].push_back(corr.second->getId());
                 }
-#ifdef REGION_MATCH_FROM_LOCAL_MAP
-                if (static_cast<int>(matchesKf2Frame.size()) >= m_minNbInliers && static_cast<int>(matchesKf2Frame.size()) > static_cast<int>(maxMatchesKf2Frame.size())) {
-                    maxKfId = it;
-                    maxMatchesKf2Frame = matchesKf2Frame;
-                }
-                for (const auto& visi : retKeyframe->getVisibility())
-                    cloudPtIn[visi.second] = false;
-                for (const auto& match : matchesKf2Frame)
-                    if (mapKeypointCloudPts.find(match.getIndexInDescriptorB()) != mapKeypointCloudPts.end())
-                        maxMatchingScore = std::max<float>(maxMatchingScore, match.getMatchingScore());
-#endif
             }
 
             // generate global 2D/3D correspondences 
@@ -332,84 +309,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                     SRef<CloudPoint> point;
                     map->getConstPointCloud()->getPoint(maxFreqPtId, point);
                     allCorres2D3D[item.first] = point;
-#ifdef REGION_MATCH_FROM_LOCAL_MAP
-                    cloudPtIn[maxFreqPtId] = true;
-#endif
                 }
             }
-
-#ifdef REGION_MATCH_FROM_LOCAL_MAP
-            if (!maxMatchesKf2Frame.empty()) {
-                Timer clockRegionMatch;
-                // estimate homography 
-                SRef<Keyframe> retKeyframe;
-                m_keyframeCollection->getKeyframe(maxKfId, retKeyframe);
-                std::vector<Point2Df> kfPts, framePts;
-                for (const auto& match : maxMatchesKf2Frame) {
-                    auto kfKp = retKeyframe->getUndistortedKeypoint(match.getIndexInDescriptorA());
-                    auto frameKp = frame->getUndistortedKeypoint(match.getIndexInDescriptorB());
-                    kfPts.emplace_back(kfKp.getX(), kfKp.getY());
-                    framePts.emplace_back(frameKp.getX(), frameKp.getY());
-                }
-
-                if (m_findHomography->find(kfPts, framePts, maxKfHomography) == api::solver::pose::Transform2DFinder::TRANSFORM2D_ESTIMATION_OK) {
-                    // find local map unseen cloud points
-                    std::vector<SRef<CloudPoint>> localMapUnseen;
-                    for (const auto& cpStatus : cloudPtIn) {
-                        if (!cpStatus.second) {
-                            SRef<CloudPoint> point;
-                            map->getConstPointCloud()->getPoint(cpStatus.first, point);
-                            localMapUnseen.push_back(point);
-                        }
-                    }
-
-                    // match local map unseen to local regions of frame image 
-                    uint32_t imgWidth = frame->getView()->getWidth();
-                    uint32_t imgHeight = frame->getView()->getHeight();
-                    SRef<CameraParameters> camParams;
-                    if (m_cameraParametersManager->getCameraParameters(retKeyframe->getCameraID(), camParams) != FrameworkReturnCode::_SUCCESS) {
-                        LOG_WARNING("Camera parameteres with id {} does not exists in the camera parameters manager", retKeyframe->getCameraID());
-                        return FrameworkReturnCode::_ERROR_;
-                    }
-
-                    std::vector<Point2Df> projected2DPts;
-                    m_projector->project(localMapUnseen, retKeyframe->getPose(), *camParams, projected2DPts);
-
-                    // using homography to find pixel in frame 
-                    std::vector<Point2Df> projected2DPtsCandidates;
-                    std::vector<SRef<CloudPoint>> localMapUnseenCandidates;
-                    for (auto i = 0; i < projected2DPts.size(); i++) {
-                        auto p = projected2DPts[i];
-                        if (p[0] > 0 && p[0] < imgWidth && p[1]>0 && p[1] < imgHeight) {
-                            float u = maxKfHomography(0, 0)*p[0] + maxKfHomography(0, 1)*p[1] + maxKfHomography(0, 2);
-                            float v = maxKfHomography(1, 0)*p[0] + maxKfHomography(1, 1)*p[1] + maxKfHomography(1, 2);
-                            float s = maxKfHomography(2, 0)*p[0] + maxKfHomography(2, 1)*p[1] + maxKfHomography(2, 2);
-                            if (s != 0.f) {
-                                projected2DPtsCandidates.push_back({ u / s, v / s });
-                                localMapUnseenCandidates.push_back(localMapUnseen[i]);
-                            }
-                        }
-                    }
-
-                    std::vector<SRef<DescriptorBuffer>> desAllLocalMapUnseenCandidates;
-                    for (const auto& cp : localMapUnseenCandidates)
-                        desAllLocalMapUnseenCandidates.push_back(cp->getDescriptor());
-
-                    std::vector<DescriptorMatch> allMatches;
-                    m_matcherRegion->match(projected2DPtsCandidates, desAllLocalMapUnseenCandidates, frame, allMatches, 0, maxMatchingScore*0.5f);
-                    for (auto &it_match : allMatches) {
-                        auto idx_3d = it_match.getIndexInDescriptorA();
-                        auto idx_2d = it_match.getIndexInDescriptorB();
-                        if (allCorres2D3D.find(idx_2d) == allCorres2D3D.end()) {
-                            SRef<CloudPoint> point;
-                            map->getConstPointCloud()->getPoint(localMapUnseenCandidates[idx_3d]->getId(), point);
-                            allCorres2D3D[idx_2d] = point;
-                        }
-                    }
-                }
-                LOG_DEBUG("Region match local map to frame took {} ms", clockRegionMatch.elapsed());
-            }
-#endif
             LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
 
             std::vector<Point2Df> pts2D;
@@ -422,7 +323,8 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 
             // pnp ransac
             std::vector<uint32_t> inliers;
-            if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+            if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS &&
+                static_cast<int>(inliers.size()) > static_cast<int>(allCorres2D3D.size()/3)) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
 
                 frame->setPose(pose);

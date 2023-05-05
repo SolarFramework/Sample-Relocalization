@@ -34,7 +34,7 @@ using namespace datastructure;
 #define INDEX_USE_CAMERA 0
 
 // Nb images between 2 pipeline requests
-#define NB_IMAGES_BETWEEN_REQUESTS 10
+#define NB_IMAGES_BETWEEN_REQUESTS 3
 
 int main(int argc, char *argv[]){
 
