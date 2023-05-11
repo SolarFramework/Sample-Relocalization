@@ -294,6 +294,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::unregisterClient");
 
+    // Stop services used by the client if needed
+    stop(uuid);
+
     // Remove the client and its services from the map
     unique_lock<mutex> lock(m_mutexClientMap);
     auto it = m_clientsMap.find(uuid);
