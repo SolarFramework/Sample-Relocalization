@@ -149,8 +149,7 @@
         </configure>
 
         <configure component="SolARMappingAndRelocalizationFrontendPipeline">
-            <property name="nbImagesBetweenRequest" access="rw" type="uint" value="3"/>
-            <property name="nbRelocRequest" access="rw" type="uint" value="5"/>
+            <property name="nbRelocRequest" access="rw" type="uint" value="3"/>
             <property name="thresholdTranslationRatio" access="rw" type="float" value="0.1" description="ratio multiplied with cumulative distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minCumulativeDistance" access="rw" type="float" value="0.05" description="minimum cumulative distance to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minTransformationDistance" access="rw" type="float" value="0.05" description="minimum distance between new and initial transformation to test if reloc pose is coherent with AR runtime pose"/>
