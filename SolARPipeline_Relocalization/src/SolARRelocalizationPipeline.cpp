@@ -241,11 +241,14 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
     if (m_started) {
 
         LOG_DEBUG("=> Detection and extraction");
+        Timer clock;
 
 		std::vector<Keypoint> keypoints, undistortedKeypoints;
 		SRef<DescriptorBuffer> descriptors;
-		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
+		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Failed to extract features from image");
 			return FrameworkReturnCode::_ERROR_;
+        }
         m_undistortKeypoints->undistort(keypoints, m_camParams, undistortedKeypoints);
         SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, m_camParamsID, poseCoarse);
 
@@ -271,7 +274,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
         std::vector<uint32_t> inliers;
         if (m_kfRetriever->retrieve(frame, retKeyframesId) == FrameworkReturnCode::_SUCCESS) {
             LOG_DEBUG("Number of retrieved keyframes: {}", retKeyframesId.size());
-            Timer clock;
             std::vector<uint32_t> processKeyframesId;
             if (retKeyframesId.size() <= NB_PROCESS_KEYFRAMES)
                 processKeyframesId.swap(retKeyframesId);
@@ -283,8 +285,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
                 std::vector<std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
-                std::vector<DescriptorMatch> matchesKf2Frame;
-                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D, matchesKf2Frame);
+                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
                 if (isFound) {
                     for (const auto &corr : corres2D3D)
                         mapKeypointCloudPts[corr.first].push_back(corr.second->getId());
@@ -311,7 +312,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 // add to global 2D/3D correspondences list 
                 if ( maxFreq >= 1 ) {
                     SRef<CloudPoint> point;
-                    map->getConstPointCloud()->getPoint(maxFreqPtId, point);
+                    map->getConstPointCloud()->getPoint(maxFreqPtId, point);  // max freq cloud point is set as the 3D correspondence 
                     allCorres2D3D[item.first] = point;
                 }
             }
@@ -327,7 +328,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
 
             // pnp ransac
             if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS &&
-                static_cast<int>(inliers.size()) > static_cast<int>(allCorres2D3D.size()/3)) {
+                static_cast<int>(inliers.size()) > static_cast<int>(allCorres2D3D.size()/3) /* add condition on percentage of inliers among all inputs */ ) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
 
                 frame->setPose(pose);
@@ -379,7 +380,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::getMapRequest(SRef<SolAR::datas
 
 // Private methods
 
-bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D, std::vector<DescriptorMatch>& matchesKfToFrame)
+bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &frame, const SRef<Keyframe>& candidateKf, std::vector<std::pair<uint32_t, SRef<CloudPoint>>> &corres2D3D)
 {
 	// feature matching to reference keyframe			
 	std::vector<DescriptorMatch> matches;
@@ -404,8 +405,6 @@ bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &f
         m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
     }
 
-    // output keypoint matches 
-    matchesKfToFrame = matches;
 	// find 2D-3D point correspondences
 	if (matches.size() < m_minNbInliers)
 		return false;
