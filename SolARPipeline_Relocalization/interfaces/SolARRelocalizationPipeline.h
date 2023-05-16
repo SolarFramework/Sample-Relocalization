@@ -142,7 +142,7 @@ private:
 	bool m_initOK = false, m_cameraOK = false, m_started = false, m_isMap = false;
     int m_minNbInliers;	
 	int m_nbRelocFails;
-    float m_confidenceSigma;  // sigma used to compute confidence score from number of inliers 
+    float m_confidenceSigma;  // sigma used to compute confidence score from number of inliers
 
     // Camera parameters
     CameraParameters                                        m_camParams;

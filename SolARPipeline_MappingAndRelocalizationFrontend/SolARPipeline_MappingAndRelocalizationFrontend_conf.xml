@@ -10,6 +10,16 @@
 
     <!-- Module generated from SolARFramework by xpcf_grpc_gen -->
     <module uuid="eb99d6a0-3026-4a26-bb44-7eb9dc99f7dd" name="SolARFrameworkGRPCRemote" description="xpcf remoting module for project SolARFramework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARFrameworkGRPCRemote/1.0.0/lib/x86_64/shared">
+        <component uuid="600ca5f4-6432-11ed-81ce-0242ac120002" name="IServiceManagerPipeline_grpcProxy" description="IServiceManagerPipeline_grpcProxy">
+            <interface uuid="6c5b9edc-c78b-47fd-8cb2-2bf8d7ede4ea" name="XPCF::IInjectable" description="Provides dependency injection interface"/>
+            <interface uuid="98dba14f-6ef9-462e-a387-34756b4cba80" name="XPCF::IConfigurable" description="Provides generic configuration ability to any component through metadata parameters"/>
+            <interface uuid="48c83eda-6432-11ed-81ce-0242ac120002" name="IServiceManagerPipeline" description="The interface to define the service manager"/>
+        </component>
+        <component uuid="d9da863c-c9ff-4562-a3a2-329ac1f44008" name="IMapUpdatePipeline_grpcProxy" description="IMapUpdatePipeline_grpcProxy grpc client proxy component">
+            <interface uuid="6c5b9edc-c78b-47fd-8cb2-2bf8d7ede4ea" name="XPCF::IInjectable" description="Provides dependency injection interface"/>
+            <interface uuid="98dba14f-6ef9-462e-a387-34756b4cba80" name="XPCF::IConfigurable" description="Provides generic configuration ability to any component through metadata parameters"/>
+            <interface uuid="49cbd32c-6dfa-4155-b151-7261dd13f552" name="IMapUpdatePipeline" description="The interface to define a map update processing pipeline"/>
+        </component>
         <component uuid="110a089c-0bb1-488e-b24b-c1b96bc9df3b" name="IMappingPipeline_grpcProxy" description="IMappingPipeline_grpcProxy grpc client proxy component">
             <interface uuid="6c5b9edc-c78b-47fd-8cb2-2bf8d7ede4ea" name="XPCF::IInjectable" description="Provides dependency injection interface"/>
             <interface uuid="98dba14f-6ef9-462e-a387-34756b4cba80" name="XPCF::IConfigurable" description="Provides generic configuration ability to any component through metadata parameters"/>
@@ -113,6 +123,10 @@
 
     <properties>
         <!-- gRPC proxy configuration-->
+        <configure component="IServiceManagerPipeline_grpcProxy">
+            <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50059"/>
+            <property name="channelCredentials" access="rw" type="uint" value="0"/>
+        </configure>
         <configure component="IMapUpdatePipeline_grpcProxy">
             <property name="channelUrl" access="rw" type="string" value="0.0.0.0:50053"/>
             <property name="channelCredentials" access="rw" type="uint" value="0"/>
@@ -139,8 +153,13 @@
             <property name="nbRelocRequest" access="rw" type="uint" value="5"/>
             <property name="thresholdTranslationRatio" access="rw" type="float" value="0.1" description="ratio multiplied with cumulative distance used as threshold to test if reloc pose is coherent with AR runtime pose"/>
             <property name="minCumulativeDistance" access="rw" type="float" value="0.05" description="minimum cumulative distance to test if reloc pose is coherent with AR runtime pose"/>
-            <property name="poseDisparityToleranceInit" access="rw" type="float" value="0.15" description="tolerance in translation disparity when initializing the tranform from ar device to solar"/>
+            <property name="minTransformationDistance" access="rw" type="float" value="0.05" description="minimum distance between new and initial transformation to test if reloc pose is coherent with AR runtime pose"/>
+            <property name="minDiffTranslationDistance" access="rw" type="float" value="0.005" description="minimum distance between previous and last poses to take this translation into account"/>
+            <property name="poseDisparityToleranceInit" access="rw" type="float" value="0.05" description="tolerance in translation disparity when initializing the tranform from ar device to solar"/>
+            <property name="poseDisparityTolerance" access="rw" type="float" value="0.15" description="tolerance in translation disparity when calculating the current tranform from ar device to solar"/>
             <property name="thresholdRelocConfidence" access="rw" type="float" value="0.0" description="threshold on reloc confidence score to check if a reloc pose is reliable to initialize transform from AR runtime to SolAR"/>
+            <property name="clientActivityDelay" access="rw" type="uint" value="120" description="delay used to test if a client is still active (in seconds)"/>
+            <property name="minRelocalizationDelay" access="rw" type="uint" value="500" description="minimum delay between 2 relocalization requests for a client (in milliseconds)"/>
         </configure>
 
         <configure component="SolARFiducialMarkerPoseEstimator">

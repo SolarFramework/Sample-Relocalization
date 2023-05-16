@@ -69,13 +69,14 @@ int main(int argc, char *argv[]){
 			return -1;
 		}
 		// start camera
-		if (gArDevice->start() != FrameworkReturnCode::_SUCCESS) {
-			LOG_ERROR("Cannot start AR device");
-			return -1;
-		}
+        if (gArDevice->start() != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Cannot start AR device");
+            return -1;
+        }
         CameraRigParameters camRigParams = gArDevice->getCameraParameters();
         CameraParameters camParams = camRigParams.cameraParams[INDEX_USE_CAMERA];
-		gRelocalizationPipeline->setCameraParameters(camParams);
+        gRelocalizationPipeline->setCameraParameters(camParams);
+
         // start pipeline
 		if (gRelocalizationPipeline->start() != FrameworkReturnCode::_SUCCESS) {
 			LOG_ERROR("Cannot start relocalization pipeline");
@@ -102,21 +103,21 @@ int main(int argc, char *argv[]){
 
 		// relocalize
         unsigned int nb_images = NB_IMAGES_BETWEEN_REQUESTS;
-		std::vector<Transform3Df> framePoses;
+        std::vector<Transform3Df> framePoses;
         std::vector<SRef<Image>> images;
         std::vector<Transform3Df> poses;
         std::chrono::system_clock::time_point timestamp;
-    
         while (gArDevice->getData(images, poses, timestamp) == FrameworkReturnCode::_SUCCESS) {
-			if (nb_images != NB_IMAGES_BETWEEN_REQUESTS) {
-				nb_images++;
+            if (nb_images != NB_IMAGES_BETWEEN_REQUESTS) {
+                nb_images++;
                 images.resize(0);
                 poses.resize(0);
-				continue;
-			}				
-			else
-				nb_images = 0;            			
-			float_t confidence = 0;
+                continue;
+            }
+            else
+                nb_images = 0;
+            float_t confidence = 0;
+            
             SRef<Image> image = images[INDEX_USE_CAMERA];
             Transform3Df pose = poses[INDEX_USE_CAMERA];
             Transform3Df poseReloc;
@@ -126,11 +127,11 @@ int main(int argc, char *argv[]){
                 framePoses.push_back(poseReloc);
             }
             else
-				LOG_DEBUG("Relocalization fails");
+                LOG_DEBUG("Relocalization fails");
             if (gImageViewer->display(displayImage) == SolAR::FrameworkReturnCode::_STOP) break;
             fnDisplay(framePoses);
-        }         
-		// display all relocalization camera poses
+        }
+        // display all relocalization camera poses
 		while (true) {
             if (!fnDisplay(framePoses))
 				break;
