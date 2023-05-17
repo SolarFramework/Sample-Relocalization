@@ -233,9 +233,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                                                                           float_t & confidence, const Transform3Df& poseCoarse)
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
-
-    confidence = 0.f;
-
     confidence = 0.f;
 
     if (m_started) {
@@ -317,7 +314,6 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 }
             }
             LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
-
             std::vector<Point2Df> pts2D;
             std::vector<Point3Df> pts3D;
             const std::vector<Keypoint>& keypoints = frame->getKeypoints();
@@ -330,11 +326,9 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
             if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS &&
                 static_cast<int>(inliers.size()) > static_cast<int>(allCorres2D3D.size()/3) /* add condition on percentage of inliers among all inputs */ ) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
-
                 frame->setPose(pose);
 				m_isMap = true;
 				m_nbRelocFails = 0;
-
                 // compute confidence score from number of inliers
                 if (inliers.size() <= m_minNbInliers)
                     confidence = 0.f;
@@ -345,7 +339,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                     LOG_DEBUG("Confidence score = {}", confidence);
                 }
                 LOG_DEBUG("Got the new pose: relocalization successful");
-                LOG_DEBUG("Reloc took {} ms", clock.elapsed());
+                LOG_DEBUG("Total computational time is {} ms", clock.elapsed());
                 return FrameworkReturnCode::_SUCCESS;
             }
         }
@@ -404,7 +398,6 @@ bool SolARRelocalizationPipeline::fnFind2D3DCorrespondences(const SRef<Frame> &f
         // RANSAC based filtering, could have random behaviors in some cases
         m_matchesFilter->filter(matches, matches, candidateKf->getUndistortedKeypoints(), frame->getUndistortedKeypoints());
     }
-
 	// find 2D-3D point correspondences
 	if (matches.size() < m_minNbInliers)
 		return false;

@@ -1523,7 +1523,7 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
     unique_lock<mutex> lock(clientContext->m_mutexFindTransform);
     clientContext->m_vector_reloc_transf_matrix.push_back(transform);
     
-    if (m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {  // if target number of transform is reached 
+    if (clientContext->m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {  // if target number of transform is reached
     
         // check if the transforms in m_vector_reloc_transf_matrix are consistent with each other 
         if (clientContext->m_mappingStatus == BOOTSTRAP) {

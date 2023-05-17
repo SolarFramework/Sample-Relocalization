@@ -30,7 +30,7 @@ using namespace SolAR;
 using namespace SolAR::api;
 using namespace datastructure;
 
-// camera idx 
+// camera idx
 #define INDEX_USE_CAMERA 0
 
 // Nb images between 2 pipeline requests
@@ -76,7 +76,6 @@ int main(int argc, char *argv[]){
         CameraRigParameters camRigParams = gArDevice->getCameraParameters();
         CameraParameters camParams = camRigParams.cameraParams[INDEX_USE_CAMERA];
         gRelocalizationPipeline->setCameraParameters(camParams);
-
         // start pipeline
 		if (gRelocalizationPipeline->start() != FrameworkReturnCode::_SUCCESS) {
 			LOG_ERROR("Cannot start relocalization pipeline");
@@ -117,7 +116,6 @@ int main(int argc, char *argv[]){
             else
                 nb_images = 0;
             float_t confidence = 0;
-            
             SRef<Image> image = images[INDEX_USE_CAMERA];
             Transform3Df pose = poses[INDEX_USE_CAMERA];
             Transform3Df poseReloc;
