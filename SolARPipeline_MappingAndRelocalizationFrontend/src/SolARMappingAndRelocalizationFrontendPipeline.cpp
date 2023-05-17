@@ -25,6 +25,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -1526,19 +1527,21 @@ bool SolARMappingAndRelocalizationFrontendPipeline::findTransformation(const SRe
     if (clientContext->m_vector_reloc_transf_matrix.size() == m_nbRelocTransformMatrixRequest) {  // if target number of transform is reached
     
         // check if the transforms in m_vector_reloc_transf_matrix are consistent with each other 
-        if (clientContext->m_mappingStatus == BOOTSTRAP) {
-            if (clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
-                for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
-                    for (int d = 0; d < 3; d++) {
-                        if (std::abs( clientContext->m_vector_reloc_transf_matrix[0](d, 3) - clientContext->m_vector_reloc_transf_matrix[i](d, 3) ) > m_poseDisparityToleranceInit) {
-                            // during bootstrap phase, if not consensus, clear and return  
-                            clientContext->m_vector_reloc_transf_matrix.clear();
-                            LOG_INFO("Pose not stable");
-                            return false;
-                        }
-                    } 
+        if (clientContext->m_mappingStatus == BOOTSTRAP && clientContext->m_vector_reloc_transf_matrix.size() >= 2) {
+            auto transform0 = clientContext->m_vector_reloc_transf_matrix[0];
+            for (auto i = 1; i<clientContext->m_vector_reloc_transf_matrix.size(); i++) {
+                std::vector<float> translationDiff = {
+                    transform0(0, 3) - clientContext->m_vector_reloc_transf_matrix[i](0, 3),
+                    transform0(1, 3) - clientContext->m_vector_reloc_transf_matrix[i](1, 3),
+                    transform0(2, 3) - clientContext->m_vector_reloc_transf_matrix[i](2, 3)
+                };
+                if (std::any_of(translationDiff.begin(), translationDiff.end(), [this](const auto& v) {return std::abs(v)>m_poseDisparityToleranceInit;})) {
+                    // during bootstrap phase, if not consensus, clear and return
+                    clientContext->m_vector_reloc_transf_matrix.clear();
+                    LOG_INFO("Pose not stable");
+                    return false;
                 }
-            } 
+            }
         }
 
         Transform3Df transform3D = transform3DAverage(clientContext->m_vector_reloc_transf_matrix);
