@@ -525,6 +525,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::setCameraPara
 {
     LOG_DEBUG("SolARMappingAndRelocalizationFrontendPipeline::setCameraParameters");
 
+    LOG_DEBUG("Camera intrinsic / distortion:\n{}\n{}", cameraParams.intrinsic, cameraParams.distortion);
+
     // Get context for current client
     SRef<ClientContext> clientContext = getClientContext(uuid);
     if (clientContext == nullptr) {
@@ -1043,6 +1045,8 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
                 clientContext->m_clientRelocDelay.restart();
             }
         }
+
+        LOG_DEBUG("poses[0] = {}",poses[0].matrix());
 
         // Check if pose is valid
         if (!poses[0].matrix().isZero()) {
