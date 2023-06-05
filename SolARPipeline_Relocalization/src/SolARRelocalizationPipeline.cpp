@@ -282,8 +282,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
                 std::vector<std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
-                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
-                if (isFound) {
+                if (fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D)) {
                     for (const auto &corr : corres2D3D)
                         mapKeypointCloudPts[corr.first].push_back(corr.second->getId());
                 }
