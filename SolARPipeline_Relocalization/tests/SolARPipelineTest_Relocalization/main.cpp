@@ -18,7 +18,6 @@
 #include "core/Log.h"
 #include "xpcf/xpcf.h"
 #include "api/pipeline/IRelocalizationPipeline.h"
-#include "api/input/devices/ICamera.h"
 #include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
 #include "api/display/I3DPointsViewer.h"
@@ -35,7 +34,7 @@ using namespace datastructure;
 #define INDEX_USE_CAMERA 0
 
 // Nb images between 2 pipeline requests
-#define NB_IMAGES_BETWEEN_REQUESTS 10
+#define NB_IMAGES_BETWEEN_REQUESTS 3
 
 int main(int argc, char *argv[]){
 

@@ -326,7 +326,7 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
     /// @brief send requests to the mapping service
     void processMapping();
 
-	/// @brief find transformation matrix
+    /// @brief find transformation matrix
     bool findTransformation(const SRef<ClientContext> clientContext, Transform3Df transform);
 
     /// @brief check if need to relocalize

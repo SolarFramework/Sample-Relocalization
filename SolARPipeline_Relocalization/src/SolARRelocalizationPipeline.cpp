@@ -14,8 +14,10 @@
 #include "xpcf/module/ModuleFactory.h"
 #include "SolARRelocalizationPipeline.h"
 #include "core/Log.h"
+#include "core/Timer.h"
 #include "boost/log/core/core.hpp"
 #include <cmath>
+#include <unordered_map>
 
 namespace xpcf  = org::bcom::xpcf;
 
@@ -231,19 +233,19 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                                                                           float_t & confidence, const Transform3Df& poseCoarse)
 {
     LOG_DEBUG("SolARRelocalizationPipeline::relocalizeProcessRequest");
-
-    confidence = 0;
-
     confidence = 0.f;
 
     if (m_started) {
 
         LOG_DEBUG("=> Detection and extraction");
+        Timer clock;
 
 		std::vector<Keypoint> keypoints, undistortedKeypoints;
 		SRef<DescriptorBuffer> descriptors;
-		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS)
+		if (m_descriptorExtractor->extract(image, keypoints, descriptors) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Failed to extract features from image");
 			return FrameworkReturnCode::_ERROR_;
+        }
         m_undistortKeypoints->undistort(keypoints, m_camParams, undistortedKeypoints);
         SRef<Frame> frame = xpcf::utils::make_shared<Frame>(keypoints, undistortedKeypoints, descriptors, image, m_camParamsID, poseCoarse);
 
@@ -274,17 +276,40 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 processKeyframesId.swap(retKeyframesId);
             else
                 processKeyframesId.insert(processKeyframesId.begin(), retKeyframesId.begin(), retKeyframesId.begin() + NB_PROCESS_KEYFRAMES);
+
+            std::map<uint32_t, std::vector<uint32_t>> mapKeypointCloudPts;
             for (const auto& it : processKeyframesId) {
                 SRef<Keyframe> retKeyframe;
                 m_keyframeCollection->getKeyframe(it, retKeyframe);
                 std::vector<std::pair<uint32_t, SRef<CloudPoint>>> corres2D3D;
-                bool isFound = fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D);
-                if (isFound) {
-                    for (const auto &corr : corres2D3D) {
-                        uint32_t idKp = corr.first;
-                        if (allCorres2D3D.find(idKp) == allCorres2D3D.end())
-                            allCorres2D3D[idKp] = corr.second;
+                if (fnFind2D3DCorrespondences(frame, retKeyframe, corres2D3D)) {
+                    for (const auto &corr : corres2D3D)
+                        mapKeypointCloudPts[corr.first].push_back(corr.second->getId());
+                }
+            }
+
+            // generate global 2D/3D correspondences 
+            SRef<SolAR::datastructure::Map> map;
+            m_mapManager->getMap(map);
+            for (const auto& item : mapKeypointCloudPts) {
+                // each keypoint could be mapped to several cloud points 
+                std::unordered_map<uint32_t, int> frequencyMap;
+                for (const auto& cloudPtId : item.second)
+                    frequencyMap[cloudPtId]++;
+                // find the cloud point with the biggest frequency value 
+                uint32_t maxFreqPtId = 0;
+                int maxFreq = 0;
+                for (const auto& element : frequencyMap) {
+                    if (element.second > maxFreq) {
+                        maxFreqPtId = element.first;
+                        maxFreq = element.second;
                     }
+                }
+                // add to global 2D/3D correspondences list 
+                if ( maxFreq >= 1 ) {
+                    SRef<CloudPoint> point;
+                    map->getConstPointCloud()->getPoint(maxFreqPtId, point);  // max freq cloud point is set as the 3D correspondence 
+                    allCorres2D3D[item.first] = point;
                 }
             }
             LOG_DEBUG("Number of all 2D-3D correspondences: {}", allCorres2D3D.size());
@@ -295,8 +320,10 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                 pts2D.push_back(Point2Df(keypoints[corr.first].getX(), keypoints[corr.first].getY()));
                 pts3D.push_back(Point3Df(corr.second->getX(), corr.second->getY(), corr.second->getZ()));
             }
+
             // pnp ransac
-            if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS) {
+            if (m_pnpRansac->estimate(pts2D, pts3D, m_camParams, inliers, pose) == FrameworkReturnCode::_SUCCESS &&
+                static_cast<int>(inliers.size()) > static_cast<int>(allCorres2D3D.size()/3) /* add condition on percentage of inliers among all inputs */ ) {
                 LOG_DEBUG(" pnp inliers size: {} / {}", inliers.size(), pts3D.size());
                 frame->setPose(pose);
 				m_isMap = true;
@@ -311,6 +338,7 @@ FrameworkReturnCode SolARRelocalizationPipeline::relocalizeProcessRequest(const 
                     LOG_DEBUG("Confidence score = {}", confidence);
                 }
                 LOG_DEBUG("Got the new pose: relocalization successful");
+                LOG_DEBUG("Total computational time is {} ms", clock.elapsed());
                 return FrameworkReturnCode::_SUCCESS;
             }
         }
