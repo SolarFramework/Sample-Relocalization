@@ -32,7 +32,7 @@ powershell Expand-Archive loopDesktopB.zip -DestinationPath .\data\data_hololens
 del loopDesktopB.zip
 
 curl https://repository.solarframework.org/generic/captures/hololens/bcomLab/hololens_vlclf_marker.zip -L -o hololens_vlclf_marker.zip
-powershell Expand-Archive hololens_vlclf_marker.zip -DestinationPath .\data\data_hololens -F
+powershell Expand-Archive hololens_vlclf_marker.zip -DestinationPath .\data\data_hololens\hololens_vlclf_marker -F
 del hololens_vlclf_marker.zip
 
 curl https://repository.solarframework.org/generic/captures/hololens/hololens_calibration.json -L -o .\data\data_hololens\hololens_calibration.json

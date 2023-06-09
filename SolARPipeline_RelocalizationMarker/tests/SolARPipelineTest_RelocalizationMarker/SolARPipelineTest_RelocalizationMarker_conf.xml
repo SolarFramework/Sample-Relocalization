@@ -116,8 +116,8 @@
             <property name="deviceID" type="uint" value="0"/>
 		</configure>
 		<configure component="SolARImagesAsCameraOpencv">
-			<property name="calibrationFile" type="string" value="../../../../../data/data_hololens/hololens_vlclf_calibration.json"/>
-			<property name="imagesDirectoryPath" type="string" value="../../../../../data/data_hololens/hololens_vlclf_marker/%03d.jpg"/>
+			<property name="calibrationFile" type="string" value="../../../../../data/data_hololens/hololens_vlclf_marker/hololens_vlclf_calibration.json"/>
+			<property name="imagesDirectoryPath" type="string" value="../../../../../data/data_hololens/hololens_vlclf_marker/000/%03d.jpg"/>
 			<property name="delayTime" type="int" value="100"/>
 		</configure>
 		<configure component="SolARVideoAsCameraOpencv">
@@ -132,7 +132,7 @@
             <property name="filePath" type="string" value="markers.json"/>
         </configure>
 		<configure component="SolARFiducialMarkersDetector" name="FiducialProperties">
-            <property name="nbThreshold" type="int" value="3"/>
+            <property name="nbThreshold" type="int" value="4"/>
 			<property name="minThreshold" type="int" value="-1"/>
 			<property name="maxThreshold" type="int" value="220"/>
         </configure>        
