@@ -1,9 +1,9 @@
 {
-	"nbTrackables": 4,	
+	"nbTrackables": 3,	
 	"trackable 0":{
 		"type": 1,
 		"data":{
-			"url": "FiducialMarkers.png",
+			"url": "FiducialMarkerA",
 			"transform3D": [
 				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
@@ -11,32 +11,8 @@
 				0.0, 0.0, 0.0, 1.0
 			],
 			"size": {
-				"width": 0.13,
-				"height": 0.13
-			},
-			"pattern": [
-				1,1,1,0,0,0,
-				1,1,1,0,1,1,
-				1,0,1,0,0,1,
-				0,0,0,1,1,0,
-				0,0,1,1,0,0,
-				0,1,1,0,0,1
-			]
-		}
-	},
-	"trackable 1":{
-		"type": 1,
-		"data":{
-			"url": "FiducialMarkers.png",
-			"transform3D": [
-				1.0, 0.0, 0.0, 0.144,
-				0.0, 1.0, 0.0, 0.0,
-				0.0, 0.0, 1.0, 0.0,
-				0.0, 0.0, 0.0, 1.0
-			],
-			"size": {
-				"width": 0.13,
-				"height": 0.13
+				"width": 0.185,
+				"height": 0.185
 			},
 			"pattern": [
 				0,0,0,0,1,1,
@@ -44,14 +20,14 @@
 				1,0,1,1,1,0,
 				1,0,0,0,1,1,
 				1,0,0,0,1,0,
-				0,1,0,0,0,1
+				0,1,0,0,0,1								
 			]
 		}
 	},
-	"trackable 2":{
-		"type": 3,
+	"trackable 1":{
+		"type": 1,
 		"data":{
-			"url": "QRCode1",
+			"url": "FiducialMarkerB",
 			"transform3D": [
 				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
@@ -59,27 +35,34 @@
 				0.0, 0.0, 0.0, 1.0
 			],
 			"size": {
-				"width": 0.1,
-				"height": 0.1
+				"width": 0.185,
+				"height": 0.185
 			},
-			"code": "QRCode1"
+			"pattern": [
+                0,0,0,1,1,1,
+				1,0,0,0,1,1,
+				1,1,0,1,1,1,
+				0,1,1,0,0,0,
+				0,0,1,0,1,0,
+				1,0,0,1,1,0
+			]
 		}
 	},
-	"trackable 3":{
+	"trackable 2":{
 		"type": 3,
 		"data":{
-			"url": "QRCode2",
+			"url": "ARTWIN",
 			"transform3D": [
-				1.0, 0.0, 0.0, 0.123,
+				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
 				0.0, 0.0, 1.0, 0.0,
 				0.0, 0.0, 0.0, 1.0
 			],
 			"size": {
-				"width": 0.1,
-				"height": 0.1
+				"width": 0.185,
+				"height": 0.185
 			},
-			"code": "QRCode2"
+			"code": "ARTWIN"
 		}
 	}
 }
