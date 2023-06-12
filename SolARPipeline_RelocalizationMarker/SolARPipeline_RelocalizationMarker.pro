@@ -47,12 +47,7 @@ include (SolARPipeline_RelocalizationMarker.pri)
 unix {
     # Avoids adding install steps manually. To be commented to have a better control over them.
     QMAKE_POST_LINK += "make install"
-}
-
-unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers
-#    QMAKE_LINK=clang++
-#    QMAKE_CXX = clang++
 }
 
 linux {
@@ -65,10 +60,6 @@ win32 {
     DEFINES += WIN64 UNICODE _UNICODE
     QMAKE_COMPILER_DEFINES += _WIN64
     QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275 /Od
-}
-
-android {
-    ANDROID_ABIS="arm64-v8a"
 }
 
 header_files.path = $${PROJECTDEPLOYDIR}/interfaces
