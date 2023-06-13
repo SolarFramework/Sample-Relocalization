@@ -67,7 +67,9 @@ win32 {
 }
 
 config_files.path = $${TARGETDEPLOYDIR}
-config_files.files= $$files($${PWD}/SolARPipelineTest_RelocalizationMarker_conf.xml) \					
+config_files.files= $$files($${PWD}/SolARPipelineTest_RelocalizationMarker_conf.xml) \
+					$${PWD}/qrcodes.png \ 					
+					$${PWD}/FiducialMarkers.png \ 
 					$${PWD}/markers.json \ 
                     $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
