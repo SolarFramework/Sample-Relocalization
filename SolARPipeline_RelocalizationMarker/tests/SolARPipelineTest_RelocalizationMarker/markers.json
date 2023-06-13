@@ -1,5 +1,5 @@
 {
-	"nbTrackables": 3,	
+	"nbTrackables": 4,	
 	"trackable 0":{
 		"type": 1,
 		"data":{
@@ -51,7 +51,7 @@
 	"trackable 2":{
 		"type": 3,
 		"data":{
-			"url": "ARTWIN",
+			"url": "QRCode1",
 			"transform3D": [
 				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
@@ -59,10 +59,27 @@
 				0.0, 0.0, 0.0, 1.0
 			],
 			"size": {
-				"width": 0.185,
-				"height": 0.185
+				"width": 0.1,
+				"height": 0.1
 			},
-			"code": "ARTWIN"
+			"code": "QRCode1"
+		}
+	},
+	"trackable 3":{
+		"type": 3,
+		"data":{
+			"url": "QRCode2",
+			"transform3D": [
+				1.0, 0.0, 0.0, 0.123,
+				0.0, 1.0, 0.0, 0.0,
+				0.0, 0.0, 1.0, 0.0,
+				0.0, 0.0, 0.0, 1.0
+			],
+			"size": {
+				"width": 0.1,
+				"height": 0.1
+			},
+			"code": "QRCode2"
 		}
 	}
 }
