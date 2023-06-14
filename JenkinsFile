@@ -4,7 +4,6 @@ node("master") {
         moduleName="SolARPipelineRelocalization"
         dirName="SolARBuild"
         buildDir="SolARPipeline_Relocalization"
-        android=true       
     }
 
     SolArModulePipeline {
@@ -14,7 +13,6 @@ node("master") {
         "SolARSample_Relocalization_Mono,\
          SolARSample_Relocalization_Multi,\
          SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
-        android=false
         packageScripts="bundleSamples"
     }
 
