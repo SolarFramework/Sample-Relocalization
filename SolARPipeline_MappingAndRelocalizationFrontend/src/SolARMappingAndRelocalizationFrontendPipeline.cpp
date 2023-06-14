@@ -285,6 +285,17 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
 
     LOG_DEBUG("New client registered with UUID: {}", uuid);
 
+    if (!m_tasksStarted) {
+        LOG_DEBUG("Start relocalization task");
+        m_relocalizationTask->start();
+        m_relocalizationMarkersTask->start();
+
+        LOG_DEBUG("Start mapping task");
+        m_mappingTask->start();
+
+        m_tasksStarted = true;
+    }
+
     LOG_DEBUG("Start client activity timer");
     clientContext->m_clientActivityTimer.restart();
 
@@ -303,6 +314,21 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
     auto it = m_clientsMap.find(uuid);
     if (it != m_clientsMap.end())
         m_clientsMap.erase(it);
+
+    if ((m_clientsMap.size() == 0) && (m_tasksStarted)) {
+        LOG_DEBUG("Stop clients activity task");
+        m_clientsActivityTask->stop();
+
+        LOG_DEBUG("Stop relocalization task");
+        m_relocalizationTask->stop();
+        m_relocalizationMarkersTask->stop();
+
+        LOG_DEBUG("Stop mapping task");
+        m_mappingTask->stop();
+
+        m_tasksStarted = false;
+    }
+
     lock.unlock();
 
     LOG_DEBUG("Client unregistered with UUID: {}", uuid);
@@ -462,17 +488,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
     }
 
     clientContext->m_init = true;
-
-    if (!m_tasksStarted) {
-        LOG_DEBUG("Start relocalization task");
-        m_relocalizationTask->start();
-        m_relocalizationMarkersTask->start();
-
-        LOG_DEBUG("Start mapping task");
-        m_mappingTask->start();
-
-        m_tasksStarted = true;
-    }
 
     return FrameworkReturnCode::_SUCCESS;
 }
