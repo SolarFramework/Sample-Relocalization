@@ -98,8 +98,8 @@
 	
 	<factory>
 		<bindings>
-			<bind interface="ICamera" to="SolARCameraOpencv"/>
-			<!--bind interface="ICamera" to="SolARImagesAsCameraOpencv"/-->
+			<!--bind interface="ICamera" to="SolARCameraOpencv"/-->
+			<bind interface="ICamera" to="SolARImagesAsCameraOpencv"/>
 			<!--bind interface="ICamera" to="SolARVideoAsCameraOpencv"/-->				
 		</bindings>
 		<injects>		
@@ -115,6 +115,11 @@
                         <property name="calibrationFile" type="string" value="../../../../../data/camera_calibration.json"/> <!-- Configure to the used camera -->
             <property name="deviceID" type="uint" value="0"/>
 		</configure>
+		<configure component="SolARImagesAsCameraOpencv">
+			<property name="calibrationFile" type="string" value="../../../../../data/data_hololens/hololens_vlclf_marker/hololens_vlclf_calibration.json"/>
+			<property name="imagesDirectoryPath" type="string" value="../../../../../data/data_hololens/hololens_vlclf_marker/000/%03d.jpg"/>
+			<property name="delayTime" type="int" value="100"/>
+		</configure>
 		<configure component="SolARVideoAsCameraOpencv">
                         <property name="calibrationFile" type="string" value="../../../../../data/camera_calibration.json"/>
 			<property name="videoPath" type="string" value="path to video"/>
@@ -127,7 +132,7 @@
             <property name="filePath" type="string" value="markers.json"/>
         </configure>
 		<configure component="SolARFiducialMarkersDetector" name="FiducialProperties">
-            <property name="nbThreshold" type="int" value="3"/>
+            <property name="nbThreshold" type="int" value="4"/>
 			<property name="minThreshold" type="int" value="-1"/>
 			<property name="maxThreshold" type="int" value="220"/>
         </configure>        
@@ -142,6 +147,9 @@
 			<property name="epsilon" type="float" value="0.05" description="The maximum distance between the original curve and its approximation (default = 0.05)"/>
 			<property name="minContourLength" type="float" value="20.0" description="The minimum length of an edge of the contour in pixels to be considered as valid (default = 20)."/>
 			<property name="minDistanceBetweenContourCorners" type="float" value="10.0" description="The minimum average distance in pixels between corners of a contour and the same corners of another contour to consider the contour as valid (default = 10)"/>
+		</configure>
+		<configure component="SolARPoseEstimationPnpOpencv">
+			<property name="method" type="str" value="ITERATIVE" description="pnp method (ITERATIVE, P3P, AP3P, EPNP, DLS, UPNP, IPPE, IPPE_SQUARE)"/>
 		</configure>
 		<configure component="SolARPerspectiveControllerOpencv">
 			<property name="outputImageWidth" type="int" value="640" description="The width in pixels of the corrected image."/>
@@ -159,9 +167,9 @@
 				<value>0.0</value>
 			</property>
             <property name="size"  type="float">
-				<value>0.1</value>
-				<value>0.1</value>
-				<value>0.1</value>
+				<value>0.185</value>
+				<value>0.185</value>
+				<value>0.185</value>
 			</property>
 		</configure>
 		<configure component="SolARImageViewerOpencv">

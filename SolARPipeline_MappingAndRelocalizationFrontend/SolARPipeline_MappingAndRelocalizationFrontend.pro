@@ -52,25 +52,11 @@ HEADERS += \
 unix {
     # Avoids adding install steps manually. To be commented to have a better control over them.
     QMAKE_POST_LINK += "make install"
-}
-
-unix:!android {
     QMAKE_CXXFLAGS += -Wignored-qualifiers
-#    QMAKE_LINK=clang++
-#    QMAKE_CXX = clang++
 }
 
 linux {
     QMAKE_LFLAGS += -ldl
-}
-
-macx {
-    DEFINES += _MACOS_TARGET_
-    QMAKE_MAC_SDK= macosx
-    QMAKE_CFLAGS += -mmacosx-version-min=10.7 -std=c11 #-x objective-c++
-    QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -std=c11 -std=c++11 -O3 -fPIC#-x objective-c++
-    QMAKE_LFLAGS += -mmacosx-version-min=10.7 -v -lstdc++
-    LIBS += -lstdc++ -lc -lpthread
 }
 
 win32 {
@@ -80,10 +66,6 @@ win32 {
     QMAKE_CXXFLAGS += -wd4250 -wd4251 -wd4244 -wd4275
     QMAKE_CXXFLAGS_DEBUG += /Od
     QMAKE_CXXFLAGS_RELEASE += /O2
-}
-
-android {
-    ANDROID_ABIS="arm64-v8a"
 }
 
 header_files.path = $${PROJECTDEPLOYDIR}/interfaces
