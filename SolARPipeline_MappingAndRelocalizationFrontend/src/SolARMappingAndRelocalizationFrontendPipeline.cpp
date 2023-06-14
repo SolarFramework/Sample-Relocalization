@@ -76,9 +76,6 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
             m_clientsActivityTask = new xpcf::DelegateTask(fnClientsActivity);
         }
 
-        // Start clients activity task
-        m_clientsActivityTask->start();
-
         // Relocalization processing function
         if (m_relocalizationTask == nullptr) {
             auto fnRelocalizationProcessing = [&]() {
@@ -286,6 +283,9 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
     LOG_DEBUG("New client registered with UUID: {}", uuid);
 
     if (!m_tasksStarted) {
+        // Start clients activity task
+        m_clientsActivityTask->start();
+
         LOG_DEBUG("Start relocalization task");
         m_relocalizationTask->start();
         m_relocalizationMarkersTask->start();
