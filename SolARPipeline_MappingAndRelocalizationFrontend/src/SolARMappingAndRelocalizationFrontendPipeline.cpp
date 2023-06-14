@@ -782,7 +782,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
         else
             clientContext->m_maxTimeRequest = m_nbSecondsBetweenRelocRequest;
         clientContext->m_cumulativeDistance = 0.f;
-
+/*
         LOG_DEBUG("Empty buffers");
 
         tuple<string, SRef<Image>, Transform3Df> imagePose;
@@ -790,7 +790,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::start(const s
         m_dropBufferRelocalizationMarkers.tryPop(imagePose);
         DropBufferMappingEntry imagePoses;
         m_dropBufferMapping.tryPop(imagePoses);
-/*
+
         m_dropBufferRelocalization.clear();
         m_dropBufferRelocalizationMarkers.clear();
         m_dropBufferMapping.clear();
@@ -1302,6 +1302,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::testClientsActivity()
             }
         }
     }
+
+    lock.unlock();
+
+    std::this_thread::sleep_for(m_clientActivityDelay * 100ms);
 }
 
 void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
