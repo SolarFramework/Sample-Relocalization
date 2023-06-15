@@ -308,6 +308,9 @@ class SOLARPIPELINE_MAPPINGANDRELOCALIZATIONFRONTEND_EXPORT_API SolARMappingAndR
 
   private:
 
+    /// @brief get and lock all needed services for the current client
+    bool getAndLockServices(const std::string & clientUUID);
+
     /// @brief create the configuration file for Services
     void createConfigurationFile(const ServiceType serviceType, const std::string & serviceURL) const;
 

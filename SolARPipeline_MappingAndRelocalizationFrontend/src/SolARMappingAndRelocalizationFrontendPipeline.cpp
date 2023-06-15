@@ -76,6 +76,9 @@ SolARMappingAndRelocalizationFrontendPipeline::SolARMappingAndRelocalizationFron
             m_clientsActivityTask = new xpcf::DelegateTask(fnClientsActivity);
         }
 
+        LOG_DEBUG("Start clients activity task");
+        m_clientsActivityTask->start();
+
         // Relocalization processing function
         if (m_relocalizationTask == nullptr) {
             auto fnRelocalizationProcessing = [&]() {
@@ -150,131 +153,6 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
 
     SRef<ClientContext> clientContext = xpcf::utils::make_shared<ClientContext>();
 
-    try {
-        if (m_serviceManager != nullptr) {
-
-            SRef<xpcf::IComponentManager> cmpMgr = xpcf::getComponentManagerInstance();
-
-            // Try to get and lock a Relocalization Service URL for the new client
-
-            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_SERVICE, uuid, clientContext->m_relocalizationURL)
-                    == FrameworkReturnCode::_SUCCESS) {
-
-                LOG_DEBUG("Relocalization Service URL given by the Service Manager:{}", clientContext->m_relocalizationURL);
-
-                // create configuration file
-                createConfigurationFile(ServiceType::RELOCALIZATION_SERVICE, clientContext->m_relocalizationURL);
-
-                if (cmpMgr->load(RELOCALIZATION_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
-                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_CONF_FILE);
-                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
-                    return FrameworkReturnCode::_ERROR_;
-                }
-
-                // Get the Relocalization Service proxy
-                clientContext->m_relocalizationService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
-
-                LOG_DEBUG("A Relocalization service ({}) has been locked for the client", clientContext->m_relocalizationURL);
-            }
-            else {
-                LOG_ERROR("No available Relocalization service");
-                return FrameworkReturnCode::_ERROR_;
-            }
-
-            // Try to get and lock a Relocalization Markers Service URL for the new client
-            string relocalizationMarkersURL = "";
-
-            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, uuid, relocalizationMarkersURL)
-                    == FrameworkReturnCode::_SUCCESS) {
-
-                LOG_DEBUG("Relocalization Markers Service URL given by the Service Manager:{}", relocalizationMarkersURL);
-
-                // create configuration file
-                createConfigurationFile(ServiceType::RELOCALIZATION_MARKERS_SERVICE, relocalizationMarkersURL);
-
-                if (cmpMgr->load(RELOCALIZATION_MARKERS_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
-                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_MARKERS_CONF_FILE);
-                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, uuid);
-                    return FrameworkReturnCode::_ERROR_;
-                }
-
-                // Get the Relocalization Markers Service proxy
-                clientContext->m_relocalizationMarkersService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
-
-                LOG_DEBUG("A Relocalization Markers service ({}) has been locked for the client", relocalizationMarkersURL);
-            }
-            else {
-                LOG_ERROR("No available Relocalization Markers service");
-                return FrameworkReturnCode::_ERROR_;
-            }
-
-            // Try to get and lock a Mapping Service URL for the new client
-            string mappingURL = "";
-
-            if (m_serviceManager->getAndLockService(ServiceType::MAPPING_SERVICE, uuid, mappingURL)
-                    == FrameworkReturnCode::_SUCCESS) {
-
-                LOG_DEBUG("Mapping Service URL given by the Service Manager:{}", mappingURL);
-
-                // create configuration file
-                createConfigurationFile(ServiceType::MAPPING_SERVICE, mappingURL);
-
-                if (cmpMgr->load(MAPPING_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
-                    LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_CONF_FILE);
-                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
-                    m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
-                    return FrameworkReturnCode::_ERROR_;
-                }
-
-                // Get the Mapping Service proxy
-                clientContext->m_mappingService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
-
-                LOG_DEBUG("A Mapping service ({}) has been locked for the client", mappingURL);
-            }
-            else {
-                LOG_ERROR("No available Mapping service");
-                m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
-                return FrameworkReturnCode::_ERROR_;
-            }
-
-            // Try to get and lock a Mapping Stereo Service URL for the new client
-            string mappingStereoURL = "";
-
-            if (m_serviceManager->getAndLockService(ServiceType::MAPPING_STEREO_SERVICE, uuid, mappingStereoURL)
-                    == FrameworkReturnCode::_SUCCESS) {
-
-                LOG_DEBUG("Mapping Stereo Service URL given by the Service Manager:{}", mappingStereoURL);
-
-                // create configuration file
-                createConfigurationFile(ServiceType::MAPPING_STEREO_SERVICE, mappingStereoURL);
-
-                if (cmpMgr->load(MAPPING_STEREO_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
-                    LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_STEREO_CONF_FILE);
-                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, uuid);
-                    m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, uuid);
-                    m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, uuid);
-                    return FrameworkReturnCode::_ERROR_;
-                }
-
-                // Get the Mapping Stereo Service proxy
-                clientContext->m_mappingStereoService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
-
-                LOG_DEBUG("A Mapping Stereo service ({}) has been locked for the client", mappingStereoURL);
-            }
-            else {
-                LOG_WARNING("No available Stereo Mapping service => use mono camera mapping instead");
-            }
-        }
-        else {
-            LOG_ERROR("Service Manager instance not created");
-            return FrameworkReturnCode::_ERROR_;
-        }
-    }
-    catch (xpcf::Exception & e) {
-        LOG_ERROR("The following exception has been caught {}", e.what());
-        return FrameworkReturnCode::_ERROR_;
-    }
-
     // Add the new client and its services to the map
     unique_lock<mutex> lock(m_mutexClientMap);
     m_clientsMap.insert(pair<string, SRef<ClientContext>>(uuid, clientContext));
@@ -283,10 +161,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::registerClien
     LOG_DEBUG("New client registered with UUID: {}", uuid);
 
     if (!m_tasksStarted) {
-        // Start clients activity task
-        m_clientsActivityTask->start();
-
-        LOG_DEBUG("Start relocalization task");
+        LOG_DEBUG("Start relocalization tasks");
         m_relocalizationTask->start();
         m_relocalizationMarkersTask->start();
 
@@ -316,10 +191,7 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::unregisterCli
         m_clientsMap.erase(it);
 
     if ((m_clientsMap.size() == 0) && (m_tasksStarted)) {
-        LOG_DEBUG("Stop clients activity task");
-        m_clientsActivityTask->stop();
-
-        LOG_DEBUG("Stop relocalization task");
+        LOG_DEBUG("Stop relocalization tasks");
         m_relocalizationTask->stop();
         m_relocalizationMarkersTask->stop();
 
@@ -382,6 +254,13 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::init(const st
 
     LOG_DEBUG("Restart client activity timer");
     clientContext->m_clientActivityTimer.restart();
+
+    LOG_DEBUG("Try to get and lock services for client: {}", uuid);
+
+    if ((clientContext->m_relocalizationURL == "") && (!getAndLockServices(uuid))) {
+        LOG_ERROR("Error trying to get and lock services for client: {}", uuid);
+        return FrameworkReturnCode::_ERROR_;
+    }
 
     // Stop services if needed
     if (clientContext->m_started)
@@ -1225,6 +1104,151 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::getPointCloud
 }
 
 // Private
+
+bool SolARMappingAndRelocalizationFrontendPipeline::getAndLockServices(const std::string & clientUUID)
+{
+    // Get context for current client
+    SRef<ClientContext> clientContext = getClientContext(clientUUID);
+    if (clientContext == nullptr) {
+        LOG_ERROR("Unknown client with UUID: {}", clientUUID);
+        return false;
+    }
+
+    try {
+        if (m_serviceManager != nullptr) {
+
+            SRef<xpcf::IComponentManager> cmpMgr = xpcf::getComponentManagerInstance();
+
+            // Try to get and lock a Relocalization Service URL for the new client
+
+            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID, clientContext->m_relocalizationURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Relocalization Service URL given by the Service Manager:{}", clientContext->m_relocalizationURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::RELOCALIZATION_SERVICE, clientContext->m_relocalizationURL);
+
+                if (cmpMgr->load(RELOCALIZATION_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                    return false;
+                }
+
+                // Get the Relocalization Service proxy
+                clientContext->m_relocalizationService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
+
+                LOG_DEBUG("A Relocalization service ({}) has been locked for the client", clientContext->m_relocalizationURL);
+            }
+            else {
+                LOG_ERROR("No available Relocalization service");
+                return false;
+            }
+
+            // Try to get and lock a Relocalization Markers Service URL for the new client
+            string relocalizationMarkersURL = "";
+
+            if (m_serviceManager->getAndLockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, clientUUID, relocalizationMarkersURL)
+                    == FrameworkReturnCode::_SUCCESS) {
+
+                LOG_DEBUG("Relocalization Markers Service URL given by the Service Manager:{}", relocalizationMarkersURL);
+
+                // create configuration file
+                createConfigurationFile(ServiceType::RELOCALIZATION_MARKERS_SERVICE, relocalizationMarkersURL);
+
+                if (cmpMgr->load(RELOCALIZATION_MARKERS_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                    LOG_ERROR("Failed to load properties configuration file: {}", RELOCALIZATION_MARKERS_CONF_FILE);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, clientUUID);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                    return false;
+                }
+
+                // Get the Relocalization Markers Service proxy
+                clientContext->m_relocalizationMarkersService = cmpMgr->resolve<api::pipeline::IRelocalizationPipeline>();
+
+                LOG_DEBUG("A Relocalization Markers service ({}) has been locked for the client", relocalizationMarkersURL);
+            }
+            else {
+                LOG_ERROR("No available Relocalization Markers service");
+                m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                return false;
+            }
+
+            if (clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING) {
+
+                // Try to get and lock a Mapping Service URL for the new client
+                string mappingURL = "";
+
+                if (m_serviceManager->getAndLockService(ServiceType::MAPPING_SERVICE, clientUUID, mappingURL)
+                        == FrameworkReturnCode::_SUCCESS) {
+
+                    LOG_DEBUG("Mapping Service URL given by the Service Manager:{}", mappingURL);
+
+                    // create configuration file
+                    createConfigurationFile(ServiceType::MAPPING_SERVICE, mappingURL);
+
+                    if (cmpMgr->load(MAPPING_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                        LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_CONF_FILE);
+                        m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, clientUUID);
+                        m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                        m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, clientUUID);
+                        return false;
+                    }
+
+                    // Get the Mapping Service proxy
+                    clientContext->m_mappingService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
+
+                    LOG_DEBUG("A Mapping service ({}) has been locked for the client", mappingURL);
+                }
+                else {
+                    LOG_ERROR("No available Mapping service");
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, clientUUID);
+                    m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                    return false;
+                }
+
+                // Try to get and lock a Mapping Stereo Service URL for the new client
+                string mappingStereoURL = "";
+
+                if (m_serviceManager->getAndLockService(ServiceType::MAPPING_STEREO_SERVICE, clientUUID, mappingStereoURL)
+                        == FrameworkReturnCode::_SUCCESS) {
+
+                    LOG_DEBUG("Mapping Stereo Service URL given by the Service Manager:{}", mappingStereoURL);
+
+                    // create configuration file
+                    createConfigurationFile(ServiceType::MAPPING_STEREO_SERVICE, mappingStereoURL);
+
+                    if (cmpMgr->load(MAPPING_STEREO_CONF_FILE.c_str()) != org::bcom::xpcf::_SUCCESS) {
+                        LOG_ERROR("Failed to load properties configuration file: {}", MAPPING_STEREO_CONF_FILE);
+                        m_serviceManager->unlockService(ServiceType::RELOCALIZATION_MARKERS_SERVICE, clientUUID);
+                        m_serviceManager->unlockService(ServiceType::RELOCALIZATION_SERVICE, clientUUID);
+                        m_serviceManager->unlockService(ServiceType::MAPPING_SERVICE, clientUUID);
+                        m_serviceManager->unlockService(ServiceType::MAPPING_STEREO_SERVICE, clientUUID);
+                        return false;
+                    }
+
+                    // Get the Mapping Stereo Service proxy
+                    clientContext->m_mappingStereoService = cmpMgr->resolve<api::pipeline::IMappingPipeline>();
+
+                    LOG_DEBUG("A Mapping Stereo service ({}) has been locked for the client", mappingStereoURL);
+                }
+                else {
+                    LOG_WARNING("No available Stereo Mapping service => use mono camera mapping instead");
+                }
+            }
+
+            return true;
+        }
+        else {
+            LOG_ERROR("Service Manager instance not created");
+            return false;
+        }
+    }
+    catch (xpcf::Exception & e) {
+        LOG_ERROR("The following exception has been caught {}", e.what());
+        return false;
+    }
+}
 
 void SolARMappingAndRelocalizationFrontendPipeline::createConfigurationFile(const ServiceType serviceType,
                                                                             const string & serviceURL) const
