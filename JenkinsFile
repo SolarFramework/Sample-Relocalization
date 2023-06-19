@@ -10,9 +10,7 @@ node("master") {
         moduleName="SolARSample_Relocalization"
         dirName="SolARBuild"
         buildDir=\
-        "SolARSample_Relocalization_Mono,\
-         SolARSample_Relocalization_Multi,\
-         SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
+        "SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
         packageScripts="bundleSamples"
     }
 
