@@ -1414,6 +1414,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", curTransform.matrix());
             findTransformation(clientContext, curTransform);
         }
+        else {
+            if (clientContext->m_T_status == NEW_3DTRANSFORM)
+                clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
+        } 
     }  catch (const exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
 
