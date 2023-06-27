@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <xpcf-registry autoAlias="true">
 
-        <module uuid="ee614014-15cf-465b-93de-7f0dddfc7cee" name="SolARPipelineRelocalizationMarker" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipelineRelocalizationMarker/1.0.0/lib/x86_64/shared">
+        <module uuid="ee614014-15cf-465b-93de-7f0dddfc7cee" name="SolARPipelineRelocalizationMarker" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipelineRelocalizationMarker/1.1.0/lib/x86_64/shared">
 		<component uuid="c61aeaf1-2126-4a85-8d4b-5358ae6a32d0" name="SolARRelocalizationMarkerPipeline" description="SolARRelocalizationPipeline implements api::pipeline::IRelocalizationPipeline interface">
 				<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 				<interface uuid="ef2a631d-93c9-4979-ad1e-5fa16d5d00ef" name="IRelocalizationPipeline" description="The interface to define a relocalization processing pipeline"/>
 		</component>
 	</module>
 
-        <module uuid="15e1990b-86b2-445c-8194-0cbe80ede970" name="SolARModuleOpenCV" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenCV/1.0.0/lib/x86_64/shared" description="OpenCV">
+        <module uuid="15e1990b-86b2-445c-8194-0cbe80ede970" name="SolARModuleOpenCV" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenCV/1.1.0/lib/x86_64/shared" description="OpenCV">
 		<component uuid="d0116ed2-45d7-455d-8011-57959da1b0fa" name="SolARFiducialMarkerLoaderOpencv" description="SolARFiducialMarkerLoaderOpencv">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="8e54d5d0-f7a3-4d62-b012-728e5704b46a" name="ITrackableLoader" description="ITrackableLoader"/>
@@ -70,7 +70,7 @@
 			<interface uuid="b485f37d-a8ea-49f6-b361-f2b30777d9ba" name="IProject" description="IProject"/>
 		</component>
 	</module>
-        <module uuid="28b89d39-41bd-451d-b19e-d25a3d7c5797" name="SolARModuleTools" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleTools/1.0.0/lib/x86_64/shared" description="Module Tools">
+        <module uuid="28b89d39-41bd-451d-b19e-d25a3d7c5797" name="SolARModuleTools" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleTools/1.1.0/lib/x86_64/shared" description="Module Tools">
 		<component uuid="a2ef5542-029e-4fce-9974-0aea14b29d6f" name="SolARSBPatternReIndexer" description="SolARSBPatternReIndexer">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect" />
 			<interface uuid="79c5b810-d557-11e7-9296-cec278b6b50a" name="ISBPatternReIndexer" description="ISBPatternReIndexer" />

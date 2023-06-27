@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <xpcf-registry autoAlias="true">  
-        <module uuid="29c5afa7-df22-4704-b5e8-6c0d4ee80036" name="SolARPipelineRelocalization" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipelineRelocalization/1.0.0/lib/x86_64/shared">
+        <module uuid="29c5afa7-df22-4704-b5e8-6c0d4ee80036" name="SolARPipelineRelocalization" description="Relocalization vision pipeline based on SolAR Framework" path="$XPCF_MODULE_ROOT/SolARBuild/SolARPipelineRelocalization/1.1.0/lib/x86_64/shared">
 		<component uuid="890d718b-3feb-44db-a16f-1330386d5fb2" name="SolARRelocalizationPipeline" description="SolARRelocalizationPipeline implements api::pipeline::IRelocalizationPipeline interface">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="ef2a631d-93c9-4979-ad1e-5fa16d5d00ef" name="IRelocalizationPipeline" description="The interface to define a relocalization processing pipeline"/>
 		</component>
 	</module>
 
-	<module uuid="fde83ee6-3e22-4531-9e1c-54cb0a3bf3fa" name="SolARModuleOpenCVCuda" description="SolARModuleOpenCVCuda" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenCVCuda/1.0.0/lib/x86_64/shared">
+        <module uuid="fde83ee6-3e22-4531-9e1c-54cb0a3bf3fa" name="SolARModuleOpenCVCuda" description="SolARModuleOpenCVCuda" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenCVCuda/1.1.0/lib/x86_64/shared">
 		<component uuid="4b5576c1-4c44-4835-a405-c8de2d4f85b0" name="SolARDeviceDataLoader" description="SolARDeviceDataLoader">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="999085e6-1d11-41a5-8cca-3daf4e02e941" name="IARDevice" description="IARDevice"/>
@@ -74,14 +74,14 @@
 		</component>
 	</module>
 	
-	<module uuid="6e960df6-9a36-11e8-9eb6-529269fb1459" name="SolARModuleOpenGL" description="SolARModuleOpenGL" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenGL/1.0.0/lib/x86_64/shared">
+        <module uuid="6e960df6-9a36-11e8-9eb6-529269fb1459" name="SolARModuleOpenGL" description="SolARModuleOpenGL" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleOpenGL/1.1.0/lib/x86_64/shared">
 		<component uuid="afd38ea0-9a46-11e8-9eb6-529269fb1459" name="SolAR3DPointsViewerOpengl" description="SolAR3DPointsViewerOpengl">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="575d365a-9a27-11e8-9eb6-529269fb1459" name="I3DPointsViewer" description="I3DPointsViewer"/>
 		</component>
 	</module>
 
-	<module uuid="28b89d39-41bd-451d-b19e-d25a3d7c5797" name="SolARModuleTools"  description="SolARModuleTools"  path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleTools/1.0.0/lib/x86_64/shared">
+        <module uuid="28b89d39-41bd-451d-b19e-d25a3d7c5797" name="SolARModuleTools"  description="SolARModuleTools"  path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleTools/1.1.0/lib/x86_64/shared">
 		<component uuid="8e3c926a-0861-46f7-80b2-8abb5576692c" name="SolARMapManager" description="SolARMapManager">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="90075c1b-915b-469d-b92d-41c5d575bf15" name="IMapManager" description="IMapManager"/>
@@ -108,14 +108,14 @@
 		</component>
 	</module>
 	
-	<module uuid="0aa58e12-b5ac-11ec-b909-0242ac120002" name="SolARModuleFBOWCuda" description="SolARModuleFBOWCuda" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleFBOWCuda/1.0.0/lib/x86_64/shared">
+        <module uuid="0aa58e12-b5ac-11ec-b909-0242ac120002" name="SolARModuleFBOWCuda" description="SolARModuleFBOWCuda" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModuleFBOWCuda/1.1.0/lib/x86_64/shared">
 		<component uuid="9d1b1afa-bdbc-11e8-a355-529269fb1459" name="SolARKeyframeRetrieverFBOW" description="SolARKeyframeRetrieverFBOW">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="f60980ce-bdbd-11e8-a355-529269fb1459" name="IKeyframeRetriever" description="IKeyframeRetriever"/>
 		</component>
 	</module>
 
-	<module uuid="4a43732c-a1b2-11eb-bcbc-0242ac130002" name="SolARModulePopSift" description="SolARModulePopSift" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModulePopSift/1.0.0/lib/x86_64/shared">
+        <module uuid="4a43732c-a1b2-11eb-bcbc-0242ac130002" name="SolARModulePopSift" description="SolARModulePopSift" path="$XPCF_MODULE_ROOT/SolARBuild/SolARModulePopSift/1.1.0/lib/x86_64/shared">
 		<component uuid="7fb2aace-a1b1-11eb-bcbc-0242ac130002" name="SolARDescritorsExtractorFromImagePopSift" description="SolARDescritorsExtractorFromImagePopSift">
 			<interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
 			<interface uuid="1cd4f5f1-6b74-413b-9725-69653aee48ef" name="IDescriptorsExtractorFromImage" description="IDescriptorsExtractorFromImage"/>
