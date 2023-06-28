@@ -967,11 +967,28 @@ FrameworkReturnCode SolARMappingAndRelocalizationFrontendPipeline::relocalizePro
             // Relocalization
             if (checkNeedReloc(clientContext)){
                 LOG_DEBUG("Push image and pose for relocalization task");
-                m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
-                if ((clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING)
-                 && (clientContext->m_mappingStatus == BOOTSTRAP))
-                    m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
-             }
+                if (clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING) { 
+                    if (clientContext->m_mappingStatus == BOOTSTRAP) { 
+                        // keep trying reloc
+                        m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
+                        m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
+                    }
+                    else {
+                        // try reloc once, then wait for m_nbSecondsBetweenRelocRequest
+                        m_dropBufferRelocalizationMarkers.push(make_tuple(uuid, images[0], poses[0]));
+                        clientContext->m_relocTimer.restart();
+                        clientContext->m_isNeedReloc = false;
+                    } 
+                }
+                else if (clientContext->m_PipelineMode == RELOCALIZATION_ONLY){
+                    // keep trying reloc   
+                    m_dropBufferRelocalization.push(make_tuple(uuid, images[0], poses[0]));
+                }
+                else {
+                    LOG_ERROR("Unsupported pipeline mode");
+                    return FrameworkReturnCode::_ERROR_;
+                } 
+            }
 
             // Mapping if the pipeline mode is mapping and found 3D Transform
             if ((clientContext->m_PipelineMode == RELOCALIZATION_AND_MAPPING)
@@ -1397,6 +1414,10 @@ void SolARMappingAndRelocalizationFrontendPipeline::processRelocalization()
             LOG_INFO("Transformation matrix from client to SolAR:\n{}", curTransform.matrix());
             findTransformation(clientContext, curTransform);
         }
+        else {
+            if (clientContext->m_T_status == NEW_3DTRANSFORM)
+                clientContext->m_T_status = PREVIOUS_3DTRANSFORM;
+        } 
     }  catch (const exception &e) {
         LOG_ERROR("Exception raised during remote request to the relocalization service: {}", e.what());
 
