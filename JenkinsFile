@@ -30,7 +30,7 @@ node("master") {
         moduleName="SolARPipelineTest_RelocalizationMarker"
         dirName="SolARBuild"
         buildDir=\
-        "SolARPipeline_RelocalizationMarker\/ests/SolARPipelineTest_RelocalizationMarker"
+        "SolARPipeline_RelocalizationMarker/tests/SolARPipelineTest_RelocalizationMarker"
         packageScripts="bundleSamples"
     }
 
