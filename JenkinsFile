@@ -13,7 +13,7 @@ node("master") {
     }
 
     SolArModulePipeline {
-        moduleName="SolARPipelineMappingAndRelocalizationFrontEnd"
+        moduleName="SolARPipelineMappingAndRelocalizationFrontend"
         dirName="SolARBuild"
         buildDir="SolARPipeline_MappingAndRelocalizationFrontend"
     }
