@@ -19,35 +19,13 @@ node("master") {
     }
 
     SolArModulePipeline {
-        moduleName="SolARPipelineTest_Relocalization"
+        moduleName="SolARPipelineTests_Relocalization"
         dirName="SolARBuild"
         buildDir=\
-        "SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
+        "SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization,\
+         SolARPipeline_RelocalizationMarker/tests/SolARPipelineTest_RelocalizationMarker,\
+         SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_MappingAndReloc,\
+         SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_RelocOnly"
         packageScripts="bundleSamples"
     }
-
-    SolArModulePipeline {
-        moduleName="SolARPipelineTest_RelocalizationMarker"
-        dirName="SolARBuild"
-        buildDir=\
-        "SolARPipeline_RelocalizationMarker/tests/SolARPipelineTest_RelocalizationMarker"
-        packageScripts="bundleSamples"
-    }
-
-    SolArModulePipeline {
-        moduleName="SolARPipelineTest_FrontendMappingAndRelocalization"
-        dirName="SolARBuild"
-        buildDir=\
-        "SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_MappingAndReloc"
-        packageScripts="bundleSamples"
-    }
-
-    SolArModulePipeline {
-        moduleName="SolARPipelineTest_FrontendRelocalizationOnly"
-        dirName="SolARBuild"
-        buildDir=\
-        "SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_RelocOnly"
-        packageScripts="bundleSamples"
-    }
-
 }
