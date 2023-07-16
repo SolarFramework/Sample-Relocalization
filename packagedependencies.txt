@@ -4,6 +4,7 @@ SolARModuleOpenGL|1.0.0|SolARModuleOpenGL|SolARBuild@github|https://github.com/S
 SolARModuleTools|1.0.0|SolARModuleTools|SolARBuild@github|https://github.com/SolarFramework/SolARModuleTools/releases/download
 SolARModuleFBOW|1.0.0|SolARModuleFBOW|SolARBuild@github|https://github.com/SolarFramework/SolARModuleFBOW/releases/download
 SolARModuleFBOWCuda|1.0.0|SolARModuleFBOWCuda|SolARBuild@github|https://github.com/SolarFramework/SolARModuleFBOW/releases/download
+SolARModulePopSift|1.0.0|SolARModulePopSift|SolARBuild@github|https://github.com/SolarFramework/SolARModulePopSift/releases/download
 SolARFrameworkGRPCRemote|1.0.0|SolARFrameworkGRPCRemote|SolARBuild@github|https://github.com/SolarFramework/SolARFrameworkGRPCRemote/releases/download
 SolARPipelineRelocalization|1.0.0|SolARPipelineRelocalization|SolARBuild@github|https://github.com/SolarFramework/Sample-Relocalization/releases/download
 SolARPipelineRelocalizationMarker|1.0.0|SolARPipelineRelocalizationMarker|SolARBuild@github|https://github.com/SolarFramework/Sample-Relocalization/releases/download
