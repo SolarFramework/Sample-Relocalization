@@ -19,7 +19,7 @@ node("master") {
     }
 
     SolArModulePipeline {
-        moduleName="SolARPipelineTests_Relocalization"
+        moduleName="SolARSample_Relocalization"
         dirName="SolARBuild"
         buildDir=\
         "SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization,\
