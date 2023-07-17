@@ -4,18 +4,28 @@ node("master") {
         moduleName="SolARPipelineRelocalization"
         dirName="SolARBuild"
         buildDir="SolARPipeline_Relocalization"
-        android=true       
+    }
+
+    SolArModulePipeline {
+        moduleName="SolARPipelineRelocalizationMarker"
+        dirName="SolARBuild"
+        buildDir="SolARPipeline_RelocalizationMarker"
+    }
+
+    SolArModulePipeline {
+        moduleName="SolARPipelineMappingAndRelocalizationFrontend"
+        dirName="SolARBuild"
+        buildDir="SolARPipeline_MappingAndRelocalizationFrontend"
     }
 
     SolArModulePipeline {
         moduleName="SolARSample_Relocalization"
         dirName="SolARBuild"
         buildDir=\
-        "SolARSample_Relocalization_Mono,\
-         SolARSample_Relocalization_Multi,\
-         SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization"
-        android=false
+        "SolARPipeline_Relocalization/tests/SolARPipelineTest_Relocalization,\
+         SolARPipeline_RelocalizationMarker/tests/SolARPipelineTest_RelocalizationMarker,\
+         SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_MappingAndReloc,\
+         SolARPipeline_MappingAndRelocalizationFrontend/tests/SolARPipelineTest_Frontend_RelocOnly"
         packageScripts="bundleSamples"
     }
-
 }

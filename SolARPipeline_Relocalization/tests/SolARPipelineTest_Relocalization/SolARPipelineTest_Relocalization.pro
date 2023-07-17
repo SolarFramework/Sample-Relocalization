@@ -6,7 +6,7 @@ QMAKE_PROJECT_DEPTH = 0
 
 ## global defintions : target lib name, version
 TARGET = SolARPipelineTest_Relocalization
-VERSION=0.11.0
+VERSION=1.0.0
 PROJECTDEPLOYDIR = $${PWD}/../../../deploy
 
 DEFINES += MYVERSION=$${VERSION}
@@ -50,15 +50,6 @@ linux {
         LIBS += -L/home/linuxbrew/.linuxbrew/lib # temporary fix caused by grpc with -lre2 ... without -L in grpc.pc
 }
 
-macx {
-    DEFINES += _MACOS_TARGET_
-    QMAKE_MAC_SDK= macosx
-    QMAKE_CFLAGS += -mmacosx-version-min=10.7 -std=c11 #-x objective-c++
-    QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -std=c11 -std=c++11 -O3 -fPIC#-x objective-c++
-    QMAKE_LFLAGS += -mmacosx-version-min=10.7 -v -lstdc++
-    LIBS += -lstdc++ -lc -lpthread
-}
-
 win32 {
 
     DEFINES += WIN64 UNICODE _UNICODE
@@ -71,6 +62,7 @@ DISTFILES += \
 
 config_files.path = $${TARGETDEPLOYDIR}
 config_files.files= $$files($${PWD}/SolARPipelineTest_Relocalization_conf.xml) \
+                    $$files($${PWD}/SolARPipelineTest_Relocalization_Cuda_conf.xml) \
                     $$files($${PWD}/camera_calibration.json)
 INSTALLS += config_files
 
@@ -89,7 +81,8 @@ linux {
 
 OTHER_FILES += \
     packagedependencies.txt \
-    SolARPipelineTest_Relocalization_conf.xml
+    SolARPipelineTest_Relocalization_conf.xml \
+    SolARPipelineTest_Relocalization_Cuda_conf.xml
 
 #NOTE : Must be placed at the end of the .pro
 include ($$shell_quote($$shell_path($${QMAKE_REMAKEN_RULES_ROOT}/remaken_install_target.pri)))) # Shell_quote & shell_path required for visual on windows

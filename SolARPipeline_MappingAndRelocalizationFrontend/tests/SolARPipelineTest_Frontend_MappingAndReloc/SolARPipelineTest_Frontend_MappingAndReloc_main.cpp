@@ -1,5 +1,5 @@
 /**
- * @copyright Copyright (c) 2022 B-com http://www.b-com.com/
+ * @copyright Copyright (c) 2021 B-com http://www.b-com.com/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 
 #include "core/Log.h"
 #include "api/pipeline/IAsyncRelocalizationPipeline.h"
+#include "api/pipeline/IMappingPipeline.h"
 #include "api/input/devices/IARDevice.h"
 #include "api/display/IImageViewer.h"
 
@@ -33,6 +34,9 @@ using namespace SolAR::datastructure;
 namespace xpcf=org::bcom::xpcf;
 
 #define INDEX_USE_CAMERA 0
+
+// UUID for this test client
+std::string gClient_UUID = "";
 
 // Global relocalization and mapping front end Pipeline instance
 SRef<pipeline::IAsyncRelocalizationPipeline> gRelocalizationAndMappingFrontendPipeline = 0;
@@ -45,7 +49,11 @@ static void SigInt(int signo) {
     LOG_INFO("Stop relocalization and mapping front end pipeline process");
 
     if (gRelocalizationAndMappingFrontendPipeline != 0)
-        gRelocalizationAndMappingFrontendPipeline->stop();
+        gRelocalizationAndMappingFrontendPipeline->stop(gClient_UUID);
+
+    LOG_INFO("Unregister this client");
+
+    gRelocalizationAndMappingFrontendPipeline->unregisterClient(gClient_UUID);
 
     LOG_INFO("End of test");
 
@@ -55,7 +63,6 @@ static void SigInt(int signo) {
 
 ///
 /// \brief Test application for SolARPipeline_MappingAndRelocalizationFrontend
-/// only with relocalization service
 ///
 
 int main(int argc, char ** argv)
@@ -66,7 +73,7 @@ int main(int argc, char ** argv)
 
     LOG_ADD_LOG_TO_CONSOLE();
 
-    LOG_SET_DEBUG_LEVEL();
+//    LOG_SET_DEBUG_LEVEL();
 
     // XPCF Component Manager
     SRef<xpcf::IComponentManager> xpcfComponentManager = 0;
@@ -79,7 +86,7 @@ int main(int argc, char ** argv)
     signal(SIGINT, SigInt);
 
     // Default configuration file
-    char * config_file = (char *)"SolARPipelineTest_MappingAndRelocalizationFrontend_RelocOnly_conf.xml";
+    char * config_file = (char *)"SolARPipelineTest_Frontend_MappingAndReloc_conf.xml";
 
     if (argc > 1) {
         // Get pipeline configuration file path and name from main args
@@ -105,10 +112,18 @@ int main(int argc, char ** argv)
             return -1;
         }
 
-        LOG_INFO("Initialize the pipeline in \'relocalization only\' mode");
+        LOG_INFO("Register this client");
 
-        if (gRelocalizationAndMappingFrontendPipeline->init(SolAR::api::pipeline::RELOCALIZATION_ONLY)
-                != FrameworkReturnCode::_SUCCESS) {
+        if (gRelocalizationAndMappingFrontendPipeline->registerClient(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
+            LOG_ERROR("Error while registering the client to the front end pipeline");
+            return -1;
+        }
+
+        LOG_INFO("Client UUID = {}", gClient_UUID);
+
+        LOG_INFO("Initialize the pipeline");
+
+        if (gRelocalizationAndMappingFrontendPipeline->init(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
             LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
             return -1;
         }
@@ -128,14 +143,14 @@ int main(int argc, char ** argv)
 
             LOG_INFO("Set camera paremeters for the pipeline");
 
-            if (gRelocalizationAndMappingFrontendPipeline->setCameraParameters(camParams) != FrameworkReturnCode::_SUCCESS) {
+            if (gRelocalizationAndMappingFrontendPipeline->setCameraParameters(gClient_UUID, camParams) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while setting camera parameters for the mapping and relocalization front end pipeline");
                 return -1;
             }
 
             LOG_INFO("Start the pipeline");
 
-            if (gRelocalizationAndMappingFrontendPipeline->start() != FrameworkReturnCode::_SUCCESS) {
+            if (gRelocalizationAndMappingFrontendPipeline->start(gClient_UUID) != FrameworkReturnCode::_SUCCESS) {
                 LOG_ERROR("Error while initializing the mapping and relocalization front end pipeline");
                 return -1;
             }
@@ -157,6 +172,7 @@ int main(int argc, char ** argv)
                     api::pipeline::TransformStatus transform3DStatus;
                     Transform3Df transform3D;
                     float_t confidence;
+                    api::pipeline::MappingStatus mappingStatus;
 
                     LOG_INFO("Send image and pose to pipeline");
 
@@ -165,7 +181,7 @@ int main(int argc, char ** argv)
 
                     // Send data to mapping and relocalization front end pipeline
                     gRelocalizationAndMappingFrontendPipeline->relocalizeProcessRequest(
-                                image, pose, timestamp, transform3DStatus, transform3D, confidence);
+                                gClient_UUID, {image}, {pose}, timestamp, transform3DStatus, transform3D, confidence, mappingStatus);
 
                     if (transform3DStatus == api::pipeline::NEW_3DTRANSFORM) {
                         LOG_INFO("New 3D transformation = {}", transform3D.matrix());
@@ -177,6 +193,10 @@ int main(int argc, char ** argv)
                         LOG_INFO("No 3D transformation matrix");
                     }
 
+                    if (mappingStatus == api::pipeline::MappingStatus::TRACKING_LOST) {
+                        LOG_INFO("Tracking lost!");
+                    }
+
                     // Display image sent
                     imageViewer->display(image);
                 }
@@ -186,7 +206,11 @@ int main(int argc, char ** argv)
                     LOG_INFO("Stop relocalization and mapping front end pipeline process");
 
                     if (gRelocalizationAndMappingFrontendPipeline != 0)
-                        gRelocalizationAndMappingFrontendPipeline->stop();
+                        gRelocalizationAndMappingFrontendPipeline->stop(gClient_UUID);
+
+                    LOG_INFO("Unregister this client");
+
+                    gRelocalizationAndMappingFrontendPipeline->unregisterClient(gClient_UUID);
 
                     LOG_INFO("End of test");
 

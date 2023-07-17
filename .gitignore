@@ -1,5 +1,4 @@
-build/
-**/.build-rules/
+*build*
 
 *.pro.user
 
@@ -104,9 +103,6 @@ data/map*
 data/data_hololens*
 data/*.avi
 data/fbow_voc
-
-
-data/
 
 SolARService_Relocalization/start_relocalization_service.sh
 
